@@ -78,5 +78,6 @@ describe("Bracket app", () => {
     expect(await screen.findByText("Live Now")).toBeInTheDocument();
     expect(screen.getByText("Final")).toBeInTheDocument();
     expect(screen.getByText("Upcoming")).toBeInTheDocument();
+    expect(screen.getByTestId("live-games-board")).toBeInTheDocument();
   });
 });

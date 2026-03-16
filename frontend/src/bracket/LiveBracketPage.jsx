@@ -3,28 +3,24 @@ import { useEffect, useMemo, useState } from "react";
 import { bracketDefinition } from "./bracketDefinition";
 import { getChampion, getMatchupTeams } from "./bracketState";
 import BracketBoard from "./BracketBoard";
-import LiveTicker from "./LiveTicker";
+import LiveGamesBoard from "./LiveGamesBoard";
+import { EMPTY_SECTIONS, useLiveBracketFeed } from "./liveBracketProvider";
 import MatchupDetailsModal from "./MatchupDetailsModal";
 import { isResolvedTeam } from "./bracketTeams";
-import { MOCK_LIVE_SNAPSHOTS, buildLiveBracketState, getTickerSections } from "./liveBracketData";
+import { createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-function createPredictionKey(teams) {
-  return [...teams].sort().join("__");
-}
-
 export default function LiveBracketPage() {
-  const [snapshotIndex, setSnapshotIndex] = useState(0);
   const [selectedMatchup, setSelectedMatchup] = useState(null);
   const [predictionCache, setPredictionCache] = useState({});
-  const snapshot = MOCK_LIVE_SNAPSHOTS[snapshotIndex];
-  const liveState = useMemo(() => buildLiveBracketState(snapshot, bracketDefinition), [snapshot]);
-  const champion = useMemo(() => getChampion(liveState.bracketState), [liveState]);
-  const tickerSections = useMemo(() => getTickerSections(snapshot), [snapshot]);
+  const liveFeed = useLiveBracketFeed({ definition: bracketDefinition });
+  const liveState = liveFeed.view;
+  const champion = useMemo(() => getChampion(liveState?.bracketState || { picks: {} }), [liveState]);
+  const tickerSections = liveState?.sections || EMPTY_SECTIONS;
 
   useEffect(() => {
-    if (!selectedMatchup) return;
+    if (!selectedMatchup || !liveState) return;
     const teams = getMatchupTeams(bracketDefinition, liveState.bracketState, selectedMatchup.id);
     if (teams.some((team) => !isResolvedTeam(team))) return;
 
@@ -32,23 +28,12 @@ export default function LiveBracketPage() {
     if (predictionCache[key]?.data || predictionCache[key]?.loading) return;
 
     setPredictionCache((current) => ({ ...current, [key]: { loading: true } }));
-    fetch(`${API_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ team_a: teams[0], team_b: teams[1], neutral_site: true }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const payload = await response.json();
-          throw new Error(payload.detail || "Prediction unavailable");
-        }
-        return response.json();
-      })
+    fetchMatchupPrediction(API_URL, teams[0], teams[1])
       .then((data) => setPredictionCache((current) => ({ ...current, [key]: { data } })))
       .catch((error) => setPredictionCache((current) => ({ ...current, [key]: { error: error.message } })));
   }, [liveState, predictionCache, selectedMatchup]);
 
-  const selectedTeams = selectedMatchup ? getMatchupTeams(bracketDefinition, liveState.bracketState, selectedMatchup.id) : [];
+  const selectedTeams = selectedMatchup && liveState ? getMatchupTeams(bracketDefinition, liveState.bracketState, selectedMatchup.id) : [];
   const selectedPrediction =
     selectedMatchup && selectedTeams.every((team) => isResolvedTeam(team))
       ? predictionCache[createPredictionKey(selectedTeams)]
@@ -69,31 +54,40 @@ export default function LiveBracketPage() {
           </div>
           <button
             className="secondary-button"
-            onClick={() => setSnapshotIndex((current) => Math.min(current + 1, MOCK_LIVE_SNAPSHOTS.length - 1))}
+            disabled={!liveFeed.canAdvance}
+            onClick={() => liveFeed.next()}
             type="button"
           >
             Next Mock Update
           </button>
-          <button className="secondary-button" onClick={() => setSnapshotIndex(0)} type="button">
+          <button className="secondary-button" onClick={() => liveFeed.reset()} type="button">
             Reset Feed
           </button>
         </div>
       </section>
 
-      <LiveTicker sections={tickerSections} />
+      <LiveGamesBoard sections={tickerSections} />
 
       <section className="live-bracket-summary">
         <div className="eyebrow">Feed Window</div>
-        <strong>{snapshot.label}</strong>
-        <span className="subtle">Mock live mode is on so we can validate ticker behavior, official advancement, and First Four resolution before the games are actually live.</span>
+        <strong>{liveState?.label || "Loading live feed..."}</strong>
+        <span className="subtle">{liveState?.meta.helperText || "Loading official bracket feed."}</span>
+        {liveState?.meta ? (
+          <div className="live-feed-meta">
+            <span>{liveState.meta.modeLabel}</span>
+            <span>{liveState.meta.sourceLabel}</span>
+            {liveState.meta.updatedAtLabel ? <span>{liveState.meta.updatedAtLabel}</span> : null}
+          </div>
+        ) : null}
+        {liveFeed.error ? <span className="error">{liveFeed.error}</span> : null}
       </section>
 
       <div className="bracket-board-shell">
         <BracketBoard
           definition={bracketDefinition}
-          getGameInfo={(matchupId) => liveState.games[matchupId] || null}
-          getTeams={(matchupId) => getMatchupTeams(bracketDefinition, liveState.bracketState, matchupId)}
-          getWinner={(matchupId) => liveState.bracketState.picks[matchupId]}
+          getGameInfo={(matchupId) => liveState?.games[matchupId] || null}
+          getTeams={(matchupId) => getMatchupTeams(bracketDefinition, liveState?.bracketState || { initialAssignments: {}, picks: {} }, matchupId)}
+          getWinner={(matchupId) => liveState?.bracketState?.picks[matchupId]}
           interactive={false}
           onDetails={(matchup) => setSelectedMatchup(matchup)}
         />
@@ -106,7 +100,7 @@ export default function LiveBracketPage() {
         onPick={() => {}}
         prediction={selectedPrediction}
         teams={selectedTeams}
-        winner={selectedMatchup ? liveState.bracketState.picks[selectedMatchup.id] : null}
+        winner={selectedMatchup && liveState ? liveState.bracketState.picks[selectedMatchup.id] : null}
       />
     </section>
   );

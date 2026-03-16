@@ -1,4 +1,7 @@
 export default function SaveBracketControls({
+  autoFillBusy = false,
+  onAutoFill,
+  onAutoFillOverwrite,
   onExport,
   onImport,
   onReset,
@@ -8,11 +11,21 @@ export default function SaveBracketControls({
 }) {
   return (
     <div className="save-controls">
+      {onAutoFill ? (
+        <button className="primary-button" disabled={autoFillBusy} onClick={onAutoFill} type="button">
+          {autoFillBusy ? "Filling..." : "Auto-Fill Bracket"}
+        </button>
+      ) : null}
+      {onAutoFillOverwrite ? (
+        <button className="secondary-button" disabled={autoFillBusy} onClick={onAutoFillOverwrite} type="button">
+          Overwrite With Model
+        </button>
+      ) : null}
       <button className="secondary-button" onClick={onSave} type="button">
         {saveLabel}
       </button>
       <button className="secondary-button" onClick={onReset} type="button">
-        Reset picks
+        Reset Entry
       </button>
       <button className="secondary-button" onClick={onExport} type="button">
         Export JSON

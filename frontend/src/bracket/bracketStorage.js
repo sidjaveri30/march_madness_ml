@@ -62,6 +62,59 @@ function normalizeBracketWorkspace(workspace, defaultState = null) {
   };
 }
 
+function getActiveEntry(workspace) {
+  return workspace.entries.find((entry) => entry.id === workspace.activeEntryId) || workspace.entries[0] || null;
+}
+
+function updateEntryTimestamp(entry, updates) {
+  return {
+    ...entry,
+    ...updates,
+    updatedAt: updates?.updatedAt || new Date().toISOString(),
+  };
+}
+
+function updateWorkspaceEntry(workspace, entryId, updater) {
+  return {
+    ...workspace,
+    entries: workspace.entries.map((entry) => (entry.id === entryId ? updateEntryTimestamp(entry, updater(entry)) : entry)),
+  };
+}
+
+function setActiveWorkspaceEntry(workspace, entryId) {
+  if (!workspace.entries.some((entry) => entry.id === entryId)) return workspace;
+  return {
+    ...workspace,
+    activeEntryId: entryId,
+  };
+}
+
+function addWorkspaceEntry(workspace, entry) {
+  return {
+    activeEntryId: entry.id,
+    entries: [...workspace.entries, entry],
+  };
+}
+
+function renameWorkspaceEntry(workspace, entryId, name) {
+  const nextName = typeof name === "string" ? name.trim() : "";
+  if (!nextName) return workspace;
+  return updateWorkspaceEntry(workspace, entryId, () => ({ name: nextName }));
+}
+
+function replaceWorkspaceEntryState(workspace, entryId, state) {
+  return updateWorkspaceEntry(workspace, entryId, () => ({ state }));
+}
+
+function deleteWorkspaceEntry(workspace, entryId) {
+  if (workspace.entries.length <= 1) return workspace;
+  const remainingEntries = workspace.entries.filter((entry) => entry.id !== entryId);
+  return {
+    activeEntryId: workspace.activeEntryId === entryId ? remainingEntries[0].id : workspace.activeEntryId,
+    entries: remainingEntries,
+  };
+}
+
 function loadBracketWorkspace(defaultState = null) {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return createBracketWorkspace(defaultState);
@@ -105,14 +158,21 @@ function clearBracketState() {
 
 export {
   STORAGE_KEY,
+  addWorkspaceEntry,
   clearBracketState,
   clearBracketWorkspace,
   createBracketEntry,
   createBracketWorkspace,
   createEntryName,
+  deleteWorkspaceEntry,
+  getActiveEntry,
   loadBracketState,
   loadBracketWorkspace,
   normalizeBracketWorkspace,
+  renameWorkspaceEntry,
+  replaceWorkspaceEntryState,
   saveBracketState,
   saveBracketWorkspace,
+  setActiveWorkspaceEntry,
+  updateWorkspaceEntry,
 };

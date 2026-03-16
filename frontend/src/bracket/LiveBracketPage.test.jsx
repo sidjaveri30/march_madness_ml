@@ -47,7 +47,8 @@ describe("LiveBracketPage", () => {
     const user = userEvent.setup();
     render(<LiveBracketPage />);
 
-    expect(screen.getByText("LIVE 2H 12:14")).toBeInTheDocument();
+    expect(screen.getByText("Live Now")).toBeInTheDocument();
+    expect(screen.getByText("2H 12:14")).toBeInTheDocument();
     expect(within(screen.getByTestId("matchup-midwest_r1_1")).getByRole("button", { name: /Howard \/ UMBC/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Next Mock Update" }));
@@ -76,5 +77,12 @@ describe("LiveBracketPage", () => {
     await user.click(screen.getByTestId("details-midwest_r1_1"));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/Market lines are unavailable until both teams are fully resolved/i)).toBeInTheDocument();
+  });
+
+  it("renders the grouped live games board", () => {
+    render(<LiveBracketPage />);
+
+    expect(screen.getByTestId("live-games-board")).toBeInTheDocument();
+    expect(screen.getByText("Upcoming")).toBeInTheDocument();
   });
 });

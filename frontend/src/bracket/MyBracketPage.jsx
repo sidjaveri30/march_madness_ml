@@ -1,35 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { autoFillBracket } from "./autoFillBracket";
 import { bracketDefinition } from "./bracketDefinition";
 import { applyWinnerPick, clearWinnerPick, createBracketState, getChampion, getMatchupTeams, setWinnerPick } from "./bracketState";
 import {
+  addWorkspaceEntry,
   createBracketEntry,
-  createBracketWorkspace,
   createEntryName,
+  deleteWorkspaceEntry,
+  getActiveEntry,
   loadBracketWorkspace,
+  renameWorkspaceEntry,
+  replaceWorkspaceEntryState,
   saveBracketWorkspace,
+  setActiveWorkspaceEntry,
 } from "./bracketStorage";
 import BracketBoard from "./BracketBoard";
 import EntryManager from "./EntryManager";
 import MatchupDetailsModal from "./MatchupDetailsModal";
 import { isResolvedTeam, sameTeam } from "./bracketTeams";
+import { createExactPredictionKey, createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
 import SaveBracketControls from "./SaveBracketControls";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-function createPredictionKey(teams) {
-  return [...teams].sort().join("__");
-}
-
 function sanitizeEntryState(entry) {
   return createBracketState(bracketDefinition, entry?.state);
-}
-
-function updateEntry(workspace, entryId, updater) {
-  return {
-    ...workspace,
-    entries: workspace.entries.map((entry) => (entry.id === entryId ? updater(entry) : entry)),
-  };
 }
 
 export default function MyBracketPage() {
@@ -40,12 +36,11 @@ export default function MyBracketPage() {
   const [selectedMatchup, setSelectedMatchup] = useState(null);
   const [predictionCache, setPredictionCache] = useState({});
   const [saveStatus, setSaveStatus] = useState("");
+  const [autoFillBusy, setAutoFillBusy] = useState(false);
   const [debugLayout, setDebugLayout] = useState(false);
+  const autoFillPredictionCacheRef = useRef(new Map());
 
-  const activeEntry = useMemo(
-    () => workspace.entries.find((entry) => entry.id === workspace.activeEntryId) || workspace.entries[0],
-    [workspace],
-  );
+  const activeEntry = useMemo(() => getActiveEntry(workspace), [workspace]);
   const bracketState = useMemo(() => sanitizeEntryState(activeEntry), [activeEntry]);
   const [entryNameDraft, setEntryNameDraft] = useState(activeEntry?.name || "");
 
@@ -66,31 +61,21 @@ export default function MyBracketPage() {
     if (predictionCache[key]?.data || predictionCache[key]?.loading) return;
 
     setPredictionCache((current) => ({ ...current, [key]: { loading: true } }));
-    fetch(`${API_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ team_a: teams[0], team_b: teams[1], neutral_site: true }),
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const payload = await response.json();
-          throw new Error(payload.detail || "Prediction unavailable");
-        }
-        return response.json();
-      })
+    fetchMatchupPrediction(API_URL, teams[0], teams[1])
       .then((data) => setPredictionCache((current) => ({ ...current, [key]: { data } })))
       .catch((error) => setPredictionCache((current) => ({ ...current, [key]: { error: error.message } })));
   }, [bracketState, predictionCache, selectedMatchup]);
 
   const champion = useMemo(() => getChampion(bracketState), [bracketState]);
 
+  function flashStatus(message, duration = 1800) {
+    setSaveStatus(message);
+    window.setTimeout(() => setSaveStatus(""), duration);
+  }
+
   function commitState(nextState) {
     setWorkspace((current) =>
-      updateEntry(current, current.activeEntryId, (entry) => ({
-        ...entry,
-        state: nextState,
-        updatedAt: new Date().toISOString(),
-      })),
+      replaceWorkspaceEntryState(current, current.activeEntryId, nextState),
     );
   }
 
@@ -108,22 +93,16 @@ export default function MyBracketPage() {
   }
 
   function handleSave() {
-    setWorkspace((current) =>
-      updateEntry(current, current.activeEntryId, (entry) => ({
-        ...entry,
-        state: bracketState,
-        name: entryNameDraft.trim() || entry.name,
-        updatedAt: new Date().toISOString(),
-      })),
-    );
-    setSaveStatus("Entry saved locally.");
-    window.setTimeout(() => setSaveStatus(""), 1800);
+    setWorkspace((current) => {
+      const renamedWorkspace = entryNameDraft.trim() ? renameWorkspaceEntry(current, current.activeEntryId, entryNameDraft) : current;
+      return replaceWorkspaceEntryState(renamedWorkspace, renamedWorkspace.activeEntryId, bracketState);
+    });
+    flashStatus("Entry saved locally.");
   }
 
   function handleReset() {
     commitState(createBracketState(bracketDefinition));
-    setSaveStatus("Entry reset.");
-    window.setTimeout(() => setSaveStatus(""), 1800);
+    flashStatus("Active entry reset.");
   }
 
   function handleExport() {
@@ -150,18 +129,12 @@ export default function MyBracketPage() {
       const nextName = typeof imported.name === "string" && imported.name.trim() ? imported.name.trim() : activeEntry?.name || "Imported Entry";
       setEntryNameDraft(nextName);
       setWorkspace((current) =>
-        updateEntry(current, current.activeEntryId, (entry) => ({
-          ...entry,
-          name: nextName,
-          state: nextState,
-          updatedAt: new Date().toISOString(),
-        })),
+        replaceWorkspaceEntryState(renameWorkspaceEntry(current, current.activeEntryId, nextName), current.activeEntryId, nextState),
       );
-      setSaveStatus("Entry imported.");
+      flashStatus("Entry imported.");
     } catch {
-      setSaveStatus("Could not import bracket JSON.");
+      flashStatus("Could not import bracket JSON.", 2200);
     }
-    window.setTimeout(() => setSaveStatus(""), 2200);
   }
 
   function handleCreateEntry() {
@@ -170,46 +143,59 @@ export default function MyBracketPage() {
         name: createEntryName(current.entries.length + 1),
         state: createBracketState(bracketDefinition),
       });
-      return {
-        activeEntryId: nextEntry.id,
-        entries: [...current.entries, nextEntry],
-      };
+      return addWorkspaceEntry(current, nextEntry);
     });
-    setSaveStatus("Created a new bracket entry.");
-    window.setTimeout(() => setSaveStatus(""), 1800);
+    flashStatus("Created a new bracket entry.");
   }
 
   function handleSelectEntry(entryId) {
-    setWorkspace((current) => ({ ...current, activeEntryId: entryId }));
+    setWorkspace((current) => setActiveWorkspaceEntry(current, entryId));
     setSelectedMatchup(null);
   }
 
   function handleRenameEntry() {
     const nextName = entryNameDraft.trim();
     if (!nextName) return;
-    setWorkspace((current) =>
-      updateEntry(current, current.activeEntryId, (entry) => ({
-        ...entry,
-        name: nextName,
-        updatedAt: new Date().toISOString(),
-      })),
-    );
-    setSaveStatus("Entry renamed.");
-    window.setTimeout(() => setSaveStatus(""), 1800);
+    setWorkspace((current) => renameWorkspaceEntry(current, current.activeEntryId, nextName));
+    flashStatus("Entry renamed.");
   }
 
   function handleDeleteEntry() {
-    setWorkspace((current) => {
-      if (current.entries.length <= 1) return current;
-      const remaining = current.entries.filter((entry) => entry.id !== current.activeEntryId);
-      return {
-        activeEntryId: remaining[0].id,
-        entries: remaining,
-      };
-    });
+    setWorkspace((current) => deleteWorkspaceEntry(current, current.activeEntryId));
     setSelectedMatchup(null);
-    setSaveStatus("Entry deleted.");
-    window.setTimeout(() => setSaveStatus(""), 1800);
+    flashStatus("Entry deleted.");
+  }
+
+  async function getAutoFillPrediction(teamA, teamB) {
+    const key = createExactPredictionKey(teamA, teamB);
+    if (!autoFillPredictionCacheRef.current.has(key)) {
+      autoFillPredictionCacheRef.current.set(key, fetchMatchupPrediction(API_URL, teamA, teamB));
+    }
+    return autoFillPredictionCacheRef.current.get(key);
+  }
+
+  async function handleAutoFill(overwrite = false) {
+    setAutoFillBusy(true);
+    try {
+      const result = await autoFillBracket({
+        definition: bracketDefinition,
+        overwrite,
+        predictMatchup: getAutoFillPrediction,
+        state: bracketState,
+      });
+
+      commitState(result.state);
+      flashStatus(
+        result.filledMatchups > 0
+          ? `${overwrite ? "Model overwrite complete." : "Auto-fill complete."} ${result.filledMatchups} matchup${result.filledMatchups === 1 ? "" : "s"} updated.`
+          : "No unresolved matchups were updated.",
+        2200,
+      );
+    } catch (error) {
+      flashStatus(error.message || "Auto-fill failed.", 2400);
+    } finally {
+      setAutoFillBusy(false);
+    }
   }
 
   const selectedTeams = selectedMatchup ? getMatchupTeams(bracketDefinition, bracketState, selectedMatchup.id) : [];
@@ -239,6 +225,7 @@ export default function MyBracketPage() {
 
       <section className="workspace-header">
         <EntryManager
+          activeEntry={activeEntry}
           activeEntryId={workspace.activeEntryId}
           draftName={entryNameDraft}
           entries={workspace.entries}
@@ -250,6 +237,9 @@ export default function MyBracketPage() {
         />
         <div className="save-controls-wrap">
           <SaveBracketControls
+            autoFillBusy={autoFillBusy}
+            onAutoFill={() => handleAutoFill(false)}
+            onAutoFillOverwrite={() => handleAutoFill(true)}
             onExport={handleExport}
             onImport={handleImport}
             onReset={handleReset}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { computeBracketLayout } from "./bracketLayout";
+import { bracketLayoutStyle, computeBracketLayout } from "./bracketLayout";
 import MatchupCard from "./MatchupCard";
 
 function DebugOverlay({ layout }) {
@@ -47,7 +47,7 @@ export default function BracketBoard({
     <section
       className={`visual-bracket cbs-bracket-board ${debugLayout ? "visual-bracket-debug" : ""}`}
       data-testid="visual-bracket"
-      style={{ width: layout.board.width, height: layout.board.height }}
+      style={{ ...bracketLayoutStyle(), width: layout.board.width, height: layout.board.height }}
     >
       <svg
         aria-hidden="true"

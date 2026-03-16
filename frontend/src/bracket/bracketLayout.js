@@ -1,9 +1,13 @@
 const BRACKET_LAYOUT = {
   ROUND_COLUMN_WIDTH: 156,
   ROUND_COLUMN_GAP: 28,
-  CARD_HEIGHT: 74,
+  CARD_HEIGHT: 92,
+  MATCHUP_META_HEIGHT: 18,
+  MATCHUP_CARD_PADDING: 6,
   TEAM_ROW_HEIGHT: 24,
-  FIRST_ROUND_VERTICAL_GAP: 18,
+  SCORE_COLUMN_WIDTH: 24,
+  STATUS_BADGE_HEIGHT: 16,
+  FIRST_ROUND_VERTICAL_GAP: 14,
   REGION_VERTICAL_OFFSET: 78,
   REGION_SECTION_GAP: 108,
   CONNECTOR_LENGTH: 18,
@@ -254,7 +258,10 @@ function bracketLayoutStyle() {
     "--round-column-width": `${BRACKET_LAYOUT.ROUND_COLUMN_WIDTH}px`,
     "--round-column-gap": `${BRACKET_LAYOUT.ROUND_COLUMN_GAP}px`,
     "--card-height": `${BRACKET_LAYOUT.CARD_HEIGHT}px`,
+    "--matchup-meta-height": `${BRACKET_LAYOUT.MATCHUP_META_HEIGHT}px`,
+    "--matchup-card-padding": `${BRACKET_LAYOUT.MATCHUP_CARD_PADDING}px`,
     "--team-row-height": `${BRACKET_LAYOUT.TEAM_ROW_HEIGHT}px`,
+    "--score-column-width": `${BRACKET_LAYOUT.SCORE_COLUMN_WIDTH}px`,
     "--connector-length": `${BRACKET_LAYOUT.CONNECTOR_LENGTH}px`,
   };
 }
