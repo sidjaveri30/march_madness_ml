@@ -47,11 +47,19 @@ describe("Bracket app", () => {
     });
   });
 
-  it("switches to bracket mode, advances a team, and shows details", async () => {
+  it("shows three distinct top-level tabs", () => {
+    render(<App />);
+
+    expect(screen.getByRole("tab", { name: "Predict a Game" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "My Bracket" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Live Bracket" })).toBeInTheDocument();
+  });
+
+  it("switches to My Bracket, advances a team, and shows details", async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("tab", { name: "Build a Bracket" }));
+    await user.click(screen.getByRole("tab", { name: "My Bracket" }));
     const dukeButtons = await screen.findAllByRole("button", { name: /Duke/i });
     await user.click(dukeButtons[0]);
 
@@ -59,5 +67,16 @@ describe("Bracket app", () => {
     await user.click(detailsButtons[0]);
 
     expect(await screen.findByText("Projected margin: 6.2")).toBeInTheDocument();
+  });
+
+  it("renders the live ticker only in Live Bracket", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.queryByText("Live Now")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Live Bracket" }));
+    expect(await screen.findByText("Live Now")).toBeInTheDocument();
+    expect(screen.getByText("Final")).toBeInTheDocument();
+    expect(screen.getByText("Upcoming")).toBeInTheDocument();
   });
 });

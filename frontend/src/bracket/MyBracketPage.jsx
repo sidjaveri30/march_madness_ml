@@ -1,0 +1,284 @@
+import { useEffect, useMemo, useState } from "react";
+
+import { bracketDefinition } from "./bracketDefinition";
+import { applyWinnerPick, clearWinnerPick, createBracketState, getChampion, getMatchupTeams, setWinnerPick } from "./bracketState";
+import {
+  createBracketEntry,
+  createBracketWorkspace,
+  createEntryName,
+  loadBracketWorkspace,
+  saveBracketWorkspace,
+} from "./bracketStorage";
+import BracketBoard from "./BracketBoard";
+import EntryManager from "./EntryManager";
+import MatchupDetailsModal from "./MatchupDetailsModal";
+import { isResolvedTeam, sameTeam } from "./bracketTeams";
+import SaveBracketControls from "./SaveBracketControls";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+function createPredictionKey(teams) {
+  return [...teams].sort().join("__");
+}
+
+function sanitizeEntryState(entry) {
+  return createBracketState(bracketDefinition, entry?.state);
+}
+
+function updateEntry(workspace, entryId, updater) {
+  return {
+    ...workspace,
+    entries: workspace.entries.map((entry) => (entry.id === entryId ? updater(entry) : entry)),
+  };
+}
+
+export default function MyBracketPage() {
+  const [workspace, setWorkspace] = useState(() => {
+    const defaultState = createBracketState(bracketDefinition);
+    return loadBracketWorkspace(defaultState);
+  });
+  const [selectedMatchup, setSelectedMatchup] = useState(null);
+  const [predictionCache, setPredictionCache] = useState({});
+  const [saveStatus, setSaveStatus] = useState("");
+  const [debugLayout, setDebugLayout] = useState(false);
+
+  const activeEntry = useMemo(
+    () => workspace.entries.find((entry) => entry.id === workspace.activeEntryId) || workspace.entries[0],
+    [workspace],
+  );
+  const bracketState = useMemo(() => sanitizeEntryState(activeEntry), [activeEntry]);
+  const [entryNameDraft, setEntryNameDraft] = useState(activeEntry?.name || "");
+
+  useEffect(() => {
+    saveBracketWorkspace(workspace);
+  }, [workspace]);
+
+  useEffect(() => {
+    setEntryNameDraft(activeEntry?.name || "");
+  }, [activeEntry?.id, activeEntry?.name]);
+
+  useEffect(() => {
+    if (!selectedMatchup) return;
+    const teams = getMatchupTeams(bracketDefinition, bracketState, selectedMatchup.id);
+    if (teams.some((team) => !isResolvedTeam(team))) return;
+
+    const key = createPredictionKey(teams);
+    if (predictionCache[key]?.data || predictionCache[key]?.loading) return;
+
+    setPredictionCache((current) => ({ ...current, [key]: { loading: true } }));
+    fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_a: teams[0], team_b: teams[1], neutral_site: true }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const payload = await response.json();
+          throw new Error(payload.detail || "Prediction unavailable");
+        }
+        return response.json();
+      })
+      .then((data) => setPredictionCache((current) => ({ ...current, [key]: { data } })))
+      .catch((error) => setPredictionCache((current) => ({ ...current, [key]: { error: error.message } })));
+  }, [bracketState, predictionCache, selectedMatchup]);
+
+  const champion = useMemo(() => getChampion(bracketState), [bracketState]);
+
+  function commitState(nextState) {
+    setWorkspace((current) =>
+      updateEntry(current, current.activeEntryId, (entry) => ({
+        ...entry,
+        state: nextState,
+        updatedAt: new Date().toISOString(),
+      })),
+    );
+  }
+
+  function handlePick(matchupId, winner) {
+    const currentWinner = bracketState.picks[matchupId];
+    if (sameTeam(currentWinner, winner)) {
+      commitState(clearWinnerPick(bracketDefinition, bracketState, matchupId));
+      return;
+    }
+    commitState(applyWinnerPick(bracketDefinition, bracketState, matchupId, winner));
+  }
+
+  function handlePickFromModal(matchupId, winner) {
+    commitState(setWinnerPick(bracketDefinition, bracketState, matchupId, winner));
+  }
+
+  function handleSave() {
+    setWorkspace((current) =>
+      updateEntry(current, current.activeEntryId, (entry) => ({
+        ...entry,
+        state: bracketState,
+        name: entryNameDraft.trim() || entry.name,
+        updatedAt: new Date().toISOString(),
+      })),
+    );
+    setSaveStatus("Entry saved locally.");
+    window.setTimeout(() => setSaveStatus(""), 1800);
+  }
+
+  function handleReset() {
+    commitState(createBracketState(bracketDefinition));
+    setSaveStatus("Entry reset.");
+    window.setTimeout(() => setSaveStatus(""), 1800);
+  }
+
+  function handleExport() {
+    const payload = {
+      name: activeEntry?.name || "Entry 1",
+      state: bracketState,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = `${(activeEntry?.name || "entry").toLowerCase().replace(/\s+/g, "-")}.json`;
+    anchor.click();
+    URL.revokeObjectURL(href);
+  }
+
+  async function handleImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const raw = await file.text();
+    try {
+      const imported = JSON.parse(raw);
+      const nextState = createBracketState(bracketDefinition, imported.state || imported);
+      const nextName = typeof imported.name === "string" && imported.name.trim() ? imported.name.trim() : activeEntry?.name || "Imported Entry";
+      setEntryNameDraft(nextName);
+      setWorkspace((current) =>
+        updateEntry(current, current.activeEntryId, (entry) => ({
+          ...entry,
+          name: nextName,
+          state: nextState,
+          updatedAt: new Date().toISOString(),
+        })),
+      );
+      setSaveStatus("Entry imported.");
+    } catch {
+      setSaveStatus("Could not import bracket JSON.");
+    }
+    window.setTimeout(() => setSaveStatus(""), 2200);
+  }
+
+  function handleCreateEntry() {
+    setWorkspace((current) => {
+      const nextEntry = createBracketEntry({
+        name: createEntryName(current.entries.length + 1),
+        state: createBracketState(bracketDefinition),
+      });
+      return {
+        activeEntryId: nextEntry.id,
+        entries: [...current.entries, nextEntry],
+      };
+    });
+    setSaveStatus("Created a new bracket entry.");
+    window.setTimeout(() => setSaveStatus(""), 1800);
+  }
+
+  function handleSelectEntry(entryId) {
+    setWorkspace((current) => ({ ...current, activeEntryId: entryId }));
+    setSelectedMatchup(null);
+  }
+
+  function handleRenameEntry() {
+    const nextName = entryNameDraft.trim();
+    if (!nextName) return;
+    setWorkspace((current) =>
+      updateEntry(current, current.activeEntryId, (entry) => ({
+        ...entry,
+        name: nextName,
+        updatedAt: new Date().toISOString(),
+      })),
+    );
+    setSaveStatus("Entry renamed.");
+    window.setTimeout(() => setSaveStatus(""), 1800);
+  }
+
+  function handleDeleteEntry() {
+    setWorkspace((current) => {
+      if (current.entries.length <= 1) return current;
+      const remaining = current.entries.filter((entry) => entry.id !== current.activeEntryId);
+      return {
+        activeEntryId: remaining[0].id,
+        entries: remaining,
+      };
+    });
+    setSelectedMatchup(null);
+    setSaveStatus("Entry deleted.");
+    window.setTimeout(() => setSaveStatus(""), 1800);
+  }
+
+  const selectedTeams = selectedMatchup ? getMatchupTeams(bracketDefinition, bracketState, selectedMatchup.id) : [];
+  const selectedPrediction =
+    selectedMatchup && selectedTeams.every((team) => isResolvedTeam(team))
+      ? predictionCache[createPredictionKey(selectedTeams)]
+      : null;
+
+  return (
+    <section className="mode-panel bracket-mode bracket-mode-clean">
+      <section className="bracket-toolbar">
+        <div className="bracket-title-block">
+          <div className="eyebrow">My Bracket</div>
+          <h2>Build and save your entries</h2>
+          <p className="subtle">Your picks stay personal here. Official results will never overwrite your saved bracket entries.</p>
+        </div>
+        <div className="bracket-toolbar-meta">
+          <div className="champion-chip">
+            <span className="metric-label">Champion</span>
+            <strong>{champion || "TBD"}</strong>
+          </div>
+          <button className={`secondary-button ${debugLayout ? "secondary-button-active" : ""}`} onClick={() => setDebugLayout((current) => !current)} type="button">
+            {debugLayout ? "Hide Layout Debug" : "Show Layout Debug"}
+          </button>
+        </div>
+      </section>
+
+      <section className="workspace-header">
+        <EntryManager
+          activeEntryId={workspace.activeEntryId}
+          draftName={entryNameDraft}
+          entries={workspace.entries}
+          onCreateEntry={handleCreateEntry}
+          onDeleteEntry={handleDeleteEntry}
+          onRenameDraft={setEntryNameDraft}
+          onRenameEntry={handleRenameEntry}
+          onSelectEntry={handleSelectEntry}
+        />
+        <div className="save-controls-wrap">
+          <SaveBracketControls
+            onExport={handleExport}
+            onImport={handleImport}
+            onReset={handleReset}
+            onSave={handleSave}
+            saveLabel="Save Entry"
+            saveStatus={saveStatus}
+          />
+        </div>
+      </section>
+
+      <div className="bracket-board-shell">
+        <BracketBoard
+          debugLayout={debugLayout}
+          definition={bracketDefinition}
+          getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
+          getWinner={(matchupId) => bracketState.picks[matchupId]}
+          onDetails={(matchup) => setSelectedMatchup(matchup)}
+          onPick={handlePick}
+        />
+      </div>
+
+      <MatchupDetailsModal
+        matchup={selectedMatchup}
+        onClose={() => setSelectedMatchup(null)}
+        onPick={(winner) => handlePickFromModal(selectedMatchup.id, winner)}
+        prediction={selectedPrediction}
+        teams={selectedTeams}
+        winner={selectedMatchup ? bracketState.picks[selectedMatchup.id] : null}
+      />
+    </section>
+  );
+}

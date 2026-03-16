@@ -34,10 +34,12 @@ function DebugOverlay({ layout }) {
 export default function BracketBoard({
   debugLayout = false,
   definition,
+  getGameInfo = () => null,
   getTeams,
   getWinner,
+  interactive = true,
   onDetails,
-  onPick,
+  onPick = () => {},
 }) {
   const layout = useMemo(() => computeBracketLayout(definition), [definition]);
 
@@ -81,6 +83,8 @@ export default function BracketBoard({
 
       {layout.cards.map((card) => (
         <MatchupCard
+          gameInfo={getGameInfo(card.matchup.id)}
+          interactive={interactive}
           key={card.matchup.id}
           matchup={card.matchup}
           onDetails={() => onDetails(card.matchup)}

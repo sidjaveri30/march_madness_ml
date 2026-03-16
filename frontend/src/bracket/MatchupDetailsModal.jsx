@@ -10,7 +10,7 @@ function formatPercent(value) {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-export default function MatchupDetailsModal({ matchup, teams, prediction, winner, onClose, onPick }) {
+export default function MatchupDetailsModal({ matchup, teams, prediction, winner, onClose, onPick, allowSelection = true }) {
   const [teamA, teamB] = teams || [];
   const teamAName = getTeamName(teamA);
   const teamBName = getTeamName(teamB);
@@ -76,33 +76,49 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
         <div className="modal-matchup">
           <button
             className={`modal-team-card ${sameTeam(winner, teamA) ? "modal-team-card-selected" : ""}`}
-            disabled={!canPickA}
-            onClick={() => canPickA && onPick(teamA)}
+            disabled={!allowSelection || !canPickA}
+            onClick={() => allowSelection && canPickA && onPick(teamA)}
             type="button"
           >
             <TeamLogo size="lg" team={teamAName} />
             <span className="modal-team-name">{teamAName || "TBD"}</span>
             <span className="modal-team-action">
-              {canPickA ? `Advance ${teamAName}` : isPlaceholderTeam(teamA) ? "Play-In placeholder" : "Awaiting team"}
+              {allowSelection
+                ? canPickA
+                  ? `Advance ${teamAName}`
+                  : isPlaceholderTeam(teamA)
+                    ? "Play-In placeholder"
+                    : "Awaiting team"
+                : "Official tournament slot"}
             </span>
           </button>
           <div className="modal-vs">vs</div>
           <button
             className={`modal-team-card ${sameTeam(winner, teamB) ? "modal-team-card-selected" : ""}`}
-            disabled={!canPickB}
-            onClick={() => canPickB && onPick(teamB)}
+            disabled={!allowSelection || !canPickB}
+            onClick={() => allowSelection && canPickB && onPick(teamB)}
             type="button"
           >
             <TeamLogo size="lg" team={teamBName} />
             <span className="modal-team-name">{teamBName || "TBD"}</span>
             <span className="modal-team-action">
-              {canPickB ? `Advance ${teamBName}` : isPlaceholderTeam(teamB) ? "Play-In placeholder" : "Awaiting team"}
+              {allowSelection
+                ? canPickB
+                  ? `Advance ${teamBName}`
+                  : isPlaceholderTeam(teamB)
+                    ? "Play-In placeholder"
+                    : "Awaiting team"
+                : "Official tournament slot"}
             </span>
           </button>
         </div>
 
         <div className="modal-pick-status">
-          {winner ? <span>Current pick: <strong>{getTeamName(winner)}</strong></span> : <span>No winner selected yet.</span>}
+          {winner ? (
+            <span>{allowSelection ? "Current pick:" : "Official winner:"} <strong>{getTeamName(winner)}</strong></span>
+          ) : (
+            <span>{allowSelection ? "No winner selected yet." : "Official result pending."}</span>
+          )}
         </div>
 
         {prediction?.loading ? <div className="modal-state">Loading model prediction...</div> : null}

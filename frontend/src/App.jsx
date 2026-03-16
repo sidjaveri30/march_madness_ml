@@ -1,11 +1,13 @@
 import { useState } from "react";
 
 import PredictGamePage from "./PredictGamePage";
-import BracketPage from "./bracket/BracketPage";
+import LiveBracketPage from "./bracket/LiveBracketPage";
+import MyBracketPage from "./bracket/MyBracketPage";
 
 const MODES = [
   { id: "predict", label: "Predict a Game" },
-  { id: "bracket", label: "Build a Bracket" },
+  { id: "my-bracket", label: "My Bracket" },
+  { id: "live-bracket", label: "Live Bracket" },
 ];
 
 export default function App() {
@@ -18,7 +20,7 @@ export default function App() {
           <div className="eyebrow">March Madness ML</div>
           <h1>2026 tournament intelligence</h1>
           <p className="subtle">
-            Jump between single-game prediction and a full interactive bracket built from the fixed 2026 field.
+            Predict individual games, manage your personal bracket entries, and track the official bracket separately as the tournament unfolds.
           </p>
         </div>
         <div className="mode-switch" role="tablist">
@@ -37,7 +39,9 @@ export default function App() {
         </div>
       </section>
 
-      {mode === "predict" ? <PredictGamePage /> : <BracketPage />}
+      {mode === "predict" ? <PredictGamePage /> : null}
+      {mode === "my-bracket" ? <MyBracketPage /> : null}
+      {mode === "live-bracket" ? <LiveBracketPage /> : null}
     </main>
   );
 }

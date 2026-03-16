@@ -3,12 +3,13 @@ export default function SaveBracketControls({
   onImport,
   onReset,
   onSave,
+  saveLabel = "Save bracket",
   saveStatus,
 }) {
   return (
     <div className="save-controls">
       <button className="secondary-button" onClick={onSave} type="button">
-        Save bracket
+        {saveLabel}
       </button>
       <button className="secondary-button" onClick={onReset} type="button">
         Reset picks

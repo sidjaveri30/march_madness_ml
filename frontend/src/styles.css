@@ -285,6 +285,35 @@ h2 {
   justify-content: flex-end;
 }
 
+.entry-manager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.entry-manager-field {
+  display: grid;
+  gap: 6px;
+}
+
+.entry-select,
+.entry-name-input {
+  min-width: 190px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: inherit;
+}
+
+.entry-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .save-status {
   color: var(--text-muted);
   font-size: 0.92rem;
@@ -424,6 +453,33 @@ h2 {
   gap: 4px;
 }
 
+.matchup-status-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.matchup-status-pill {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.matchup-status-pill-live {
+  background: rgba(0, 87, 184, 0.1);
+  color: var(--accent);
+}
+
+.matchup-status-pill-final {
+  background: rgba(21, 128, 61, 0.12);
+  color: var(--success);
+}
+
 .matchup-info-button {
   width: 18px;
   height: 18px;
@@ -453,6 +509,10 @@ h2 {
   font-size: 0.74rem;
 }
 
+.team-slot-with-score {
+  grid-template-columns: 18px 18px 1fr auto;
+}
+
 .team-slot:hover:not(:disabled) {
   border-color: #bfd4ec;
   background: #f5f9ff;
@@ -465,6 +525,15 @@ h2 {
 
 .team-slot-placeholder {
   color: #314255;
+}
+
+.team-slot-static {
+  cursor: default;
+}
+
+.team-slot-static:hover:not(:disabled) {
+  border-color: transparent;
+  background: #ffffff;
 }
 
 .team-slot:disabled {
@@ -487,6 +556,11 @@ h2 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.team-score {
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .bracket-mode-clean {
@@ -530,6 +604,72 @@ h2 {
 .save-controls-wrap {
   display: flex;
   justify-content: flex-end;
+}
+
+.live-ticker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ticker-section {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.ticker-section-title {
+  margin-bottom: 10px;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ticker-items {
+  display: grid;
+  gap: 8px;
+}
+
+.ticker-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.ticker-status {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.ticker-team-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 22px;
+  font-size: 0.84rem;
+}
+
+.ticker-empty {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.live-bracket-summary {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
 }
 
 .bracket-lane {
@@ -830,7 +970,8 @@ td:last-child {
   .hero-metrics,
   .modal-grid,
   .market-context-grid,
-  .market-consensus-grid {
+  .market-consensus-grid,
+  .live-ticker {
     grid-template-columns: 1fr;
   }
 
@@ -851,11 +992,17 @@ td:last-child {
   .mode-switch {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .bracket-toolbar-meta {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .entry-manager,
+  .save-controls-wrap,
+  .save-controls {
+    width: 100%;
   }
 }
