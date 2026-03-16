@@ -19,7 +19,9 @@ function normalizePlayer(player, index) {
     id: typeof player?.id === "string" && player.id ? player.id : base.id,
     name: typeof player?.name === "string" && player.name.trim() ? player.name.trim() : base.name,
     eliminated: Boolean(player?.eliminated),
+    eliminatedRound: typeof player?.eliminatedRound === "string" ? player.eliminatedRound : "",
     eliminationReason: typeof player?.eliminationReason === "string" ? player.eliminationReason : "",
+    eliminationPickIds: Array.isArray(player?.eliminationPickIds) ? player.eliminationPickIds.filter((teamId) => typeof teamId === "string") : [],
     picks: Array.isArray(player?.picks) ? player.picks.map(normalizePick).filter(Boolean) : [],
     usedTeamIds: Array.isArray(player?.usedTeamIds) ? player.usedTeamIds.filter((teamId) => typeof teamId === "string") : [],
   };

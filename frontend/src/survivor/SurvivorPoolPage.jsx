@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { bracketDefinition } from "../bracket/bracketDefinition";
 import { createBracketState } from "../bracket/bracketState";
 import { useLiveBracketFeed } from "../bracket/liveBracketProvider";
+import AdminToolsSection from "./AdminToolsSection";
 import PlayerManagementSection from "./PlayerManagementSection";
 import PickEntrySection from "./PickEntrySection";
 import PoolDashboard from "./PoolDashboard";
@@ -11,6 +12,7 @@ import { loadSurvivorPool, saveSurvivorPool } from "./survivorPoolStorage.js";
 import {
   SURVIVOR_ROUND_CONFIG,
   buildRoundContext,
+  clearPlayerRoundPicks,
   createPlayer,
   getActivePlayers,
   getCurrentRoundContext,
@@ -18,6 +20,9 @@ import {
   getNextRoundContext,
   getPlayerRoundPick,
   processRoundResults,
+  recomputePoolState,
+  resetPoolProgress,
+  rollbackPoolToRound,
   setPlayerRoundPicks,
 } from "./survivorPoolUtils.js";
 
@@ -25,7 +30,10 @@ function createTeamLookup(definition, officialBracketState, gamesByMatchupId) {
   const lookup = new Map();
   SURVIVOR_ROUND_CONFIG.forEach((round) => {
     const context = buildRoundContext(definition, officialBracketState, gamesByMatchupId, round.roundKey);
-    context.availableTeams.forEach((team) => {
+    context?.availableTeams?.forEach((team) => {
+      lookup.set(team.id, team.name);
+    });
+    context?.unresolvedTeams?.forEach((team) => {
       lookup.set(team.id, team.name);
     });
   });
@@ -39,15 +47,21 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const [pickError, setPickError] = useState("");
   const [resultsError, setResultsError] = useState("");
   const [resultsMessage, setResultsMessage] = useState("");
+  const [rollbackRoundKey, setRollbackRoundKey] = useState("");
   const liveFeedFromStore = useLiveBracketFeed({ definition: bracketDefinition, disabled: Boolean(liveFeedOverride) });
   const liveFeed = liveFeedOverride || liveFeedFromStore;
+  const fallbackBracketState = useMemo(() => createBracketState(bracketDefinition), []);
+  const emptyGamesByMatchupId = useMemo(() => ({}), []);
+  const officialBracketState = liveFeed.view?.bracketState || fallbackBracketState;
+  const gamesByMatchupId = liveFeed.view?.games || emptyGamesByMatchupId;
 
   useEffect(() => {
     saveSurvivorPool(pool);
   }, [pool]);
 
-  const officialBracketState = liveFeed.view?.bracketState || createBracketState(bracketDefinition);
-  const gamesByMatchupId = liveFeed.view?.games || {};
+  useEffect(() => {
+    setPool((current) => recomputePoolState(current, bracketDefinition, officialBracketState, gamesByMatchupId));
+  }, [officialBracketState, gamesByMatchupId]);
 
   const currentRound = useMemo(
     () => getCurrentRoundContext(bracketDefinition, officialBracketState, gamesByMatchupId, pool.processedRoundKeys),
@@ -63,6 +77,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   );
   const activePlayers = useMemo(() => getActivePlayers(pool), [pool]);
   const eliminatedPlayers = useMemo(() => getEliminatedPlayers(pool), [pool]);
+  const selectedPlayer = pool.players.find((player) => player.id === selectedPlayerId) || null;
 
   useEffect(() => {
     if (selectedPlayerId && pool.players.some((player) => player.id === selectedPlayerId && !player.eliminated)) return;
@@ -130,7 +145,14 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       setResultsError("No official round is available to process.");
       return;
     }
-    const result = processRoundResults(pool, currentRound, nextRound);
+    const result = processRoundResults(
+      pool,
+      currentRound,
+      nextRound,
+      bracketDefinition,
+      officialBracketState,
+      gamesByMatchupId,
+    );
     if (result.error) {
       setResultsError(result.error);
       return;
@@ -142,6 +164,35 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     setResultsMessage(currentRound.roundKey === "championship" ? "Championship results processed." : `${currentRound.tournamentLabel} results processed.`);
   }
 
+  function handleClearCurrentPicks() {
+    if (!currentRound || !selectedPlayerId) return;
+    setPool((current) => clearPlayerRoundPicks(current, selectedPlayerId, currentRound.roundKey));
+    setSelectedTeamIds([]);
+    setPickError("");
+    setResultsMessage("Current round picks cleared for the selected player.");
+  }
+
+  function handleRollbackRound() {
+    if (!rollbackRoundKey) return;
+    setPool((current) => rollbackPoolToRound(current, rollbackRoundKey, bracketDefinition, officialBracketState, gamesByMatchupId));
+    setRollbackRoundKey("");
+    setPickError("");
+    setResultsError("");
+    const label = SURVIVOR_ROUND_CONFIG.find((round) => round.roundKey === rollbackRoundKey)?.tournamentLabel || rollbackRoundKey;
+    setResultsMessage(`Pool rolled back to ${label}.`);
+  }
+
+  function handleResetPool() {
+    if (!window.confirm("Reset the Survivor Pool? This clears every pick, elimination, and processed round while keeping the player list.")) {
+      return;
+    }
+    setPool((current) => resetPoolProgress(current));
+    setSelectedTeamIds([]);
+    setPickError("");
+    setResultsError("");
+    setResultsMessage("Survivor Pool reset to Round of 64.");
+  }
+
   return (
     <section className="mode-panel survivor-mode">
       <section className="survivor-hero">
@@ -149,7 +200,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
           <div className="eyebrow">Survivor Pool</div>
           <h2>March Madness survivor, driven by the official bracket</h2>
           <p className="subtle">
-            Add players, submit round picks, and let the pool advance with the live tournament state already powering the official bracket. No manual interval builder required.
+            Add players, pick surviving teams from the official bracket, and use host controls to correct mistakes without touching localStorage manually.
           </p>
           {liveFeed.error ? <div className="inline-error">{liveFeed.error}</div> : null}
         </div>
@@ -192,8 +243,20 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
         setSelectedTeamIds={setSelectedTeamIds}
       />
 
+      <AdminToolsSection
+        currentRound={currentRound}
+        onClearCurrentPicks={handleClearCurrentPicks}
+        onResetPool={handleResetPool}
+        onRollbackRound={handleRollbackRound}
+        pool={pool}
+        rollbackRoundKey={rollbackRoundKey}
+        selectedPlayer={selectedPlayer}
+        setRollbackRoundKey={setRollbackRoundKey}
+      />
+
       <ResultsProcessorSection
         activePlayers={activePlayers}
+        currentRound={currentRound}
         eliminatedPlayers={eliminatedPlayers}
         onProcessResults={handleProcessResults}
         pool={pool}
