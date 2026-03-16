@@ -1,17 +1,63 @@
+import { useEffect, useState } from "react";
+
+import MarketContextSection from "../MarketContextSection";
 import TeamLogo from "../TeamLogo";
-import { getTeamName, isPickableTeam, isPlaceholderTeam } from "./bracketTeams";
+import { getTeamName, isPickableTeam, isPlaceholderTeam, sameTeam } from "./bracketTeams";
 
 function formatPercent(value) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
 export default function MatchupDetailsModal({ matchup, teams, prediction, winner, onClose, onPick }) {
-  if (!matchup) return null;
-  const [teamA, teamB] = teams;
+  const [teamA, teamB] = teams || [];
   const teamAName = getTeamName(teamA);
   const teamBName = getTeamName(teamB);
   const canPickA = isPickableTeam(teamA);
   const canPickB = isPickableTeam(teamB);
+  const [oddsState, setOddsState] = useState({ data: null, loading: false, error: "" });
+
+  useEffect(() => {
+    if (!matchup) return undefined;
+    if (!teamAName || !teamBName || teamAName.includes("/") || teamBName.includes("/")) {
+      setOddsState({
+        data: {
+          team_a: teamAName || "TBD",
+          team_b: teamBName || "TBD",
+          event_found: false,
+          bookmakers: [],
+          consensus: {},
+          model_vs_market: null,
+          message: "Market lines are unavailable until both teams are fully resolved.",
+        },
+        loading: false,
+        error: "",
+      });
+      return undefined;
+    }
+    let cancelled = false;
+    async function loadOdds() {
+      setOddsState({ data: null, loading: true, error: "" });
+      try {
+        const params = new URLSearchParams({ team_a: teamAName, team_b: teamBName });
+        const response = await fetch(`${API_URL}/odds?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Could not load market context.");
+        }
+        const payload = await response.json();
+        if (!cancelled) setOddsState({ data: payload, loading: false, error: "" });
+      } catch (error) {
+        if (!cancelled) setOddsState({ data: null, loading: false, error: error.message });
+      }
+    }
+    loadOdds();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchup, teamAName, teamBName]);
+
+  if (!matchup) return null;
 
   return (
     <div className="modal-shell" onClick={onClose} role="presentation">
@@ -29,7 +75,7 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
 
         <div className="modal-matchup">
           <button
-            className={`modal-team-card ${winner === teamA ? "modal-team-card-selected" : ""}`}
+            className={`modal-team-card ${sameTeam(winner, teamA) ? "modal-team-card-selected" : ""}`}
             disabled={!canPickA}
             onClick={() => canPickA && onPick(teamA)}
             type="button"
@@ -42,7 +88,7 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
           </button>
           <div className="modal-vs">vs</div>
           <button
-            className={`modal-team-card ${winner === teamB ? "modal-team-card-selected" : ""}`}
+            className={`modal-team-card ${sameTeam(winner, teamB) ? "modal-team-card-selected" : ""}`}
             disabled={!canPickB}
             onClick={() => canPickB && onPick(teamB)}
             type="button"
@@ -56,7 +102,7 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
         </div>
 
         <div className="modal-pick-status">
-          {winner ? <span>Current pick: <strong>{winner}</strong></span> : <span>No winner selected yet.</span>}
+          {winner ? <span>Current pick: <strong>{getTeamName(winner)}</strong></span> : <span>No winner selected yet.</span>}
         </div>
 
         {prediction?.loading ? <div className="modal-state">Loading model prediction...</div> : null}
@@ -102,11 +148,21 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
                 </tbody>
               </table>
             </div>
+            <div className="modal-panel modal-panel-wide">
+              <div className="eyebrow">Sportsbook lines</div>
+              <MarketContextSection error={oddsState.error} loading={oddsState.loading} odds={oddsState.data} />
+            </div>
           </div>
         ) : null}
 
         {!prediction?.data && !prediction?.loading && !prediction?.error ? (
-          <div className="modal-state">Prediction details will appear when both teams are known.</div>
+          <div className="modal-grid">
+            <div className="modal-state">Prediction details will appear when both teams are known.</div>
+            <div className="modal-panel modal-panel-wide">
+              <div className="eyebrow">Sportsbook lines</div>
+              <MarketContextSection error={oddsState.error} loading={oddsState.loading} odds={oddsState.data} />
+            </div>
+          </div>
         ) : null}
       </div>
     </div>

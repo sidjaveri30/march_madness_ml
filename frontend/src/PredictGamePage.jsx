@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import MarketContextSection from "./MarketContextSection";
 import TeamLogo from "./TeamLogo";
 import TeamCombobox from "./TeamCombobox";
 import { resolveTeamInput } from "./teamSearch";
@@ -20,6 +21,9 @@ export default function PredictGamePage() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [oddsContext, setOddsContext] = useState(null);
+  const [oddsLoading, setOddsLoading] = useState(false);
+  const [oddsError, setOddsError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({ teamA: "", teamB: "" });
   const [fieldSuggestions, setFieldSuggestions] = useState({ teamA: null, teamB: null });
 
@@ -43,6 +47,35 @@ export default function PredictGamePage() {
 
   const teamAResolution = useMemo(() => resolveTeamInput(teamAInput, teams), [teamAInput, teams]);
   const teamBResolution = useMemo(() => resolveTeamInput(teamBInput, teams), [teamBInput, teams]);
+
+  useEffect(() => {
+    if (!result?.team_a || !result?.team_b) {
+      setOddsContext(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadOdds() {
+      setOddsLoading(true);
+      setOddsError("");
+      try {
+        const params = new URLSearchParams({ team_a: result.team_a, team_b: result.team_b });
+        const response = await fetch(`${API_URL}/odds?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Could not load market context.");
+        }
+        const payload = await response.json();
+        if (!cancelled) setOddsContext(payload);
+      } catch (err) {
+        if (!cancelled) setOddsError(err.message);
+      } finally {
+        if (!cancelled) setOddsLoading(false);
+      }
+    }
+    loadOdds();
+    return () => {
+      cancelled = true;
+    };
+  }, [result]);
 
   function validateField(fieldName, options = {}) {
     const isSubmit = options.isSubmit || false;
@@ -102,6 +135,8 @@ export default function PredictGamePage() {
     setLoading(true);
     setError("");
     setResult(null);
+    setOddsContext(null);
+    setOddsError("");
     try {
       const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
@@ -215,30 +250,37 @@ export default function PredictGamePage() {
       {error ? <div className="inline-error">{error}</div> : null}
 
       {result ? (
-        <section className="predictor-results">
-          <div className="result-card highlight-card">
-            <div className="eyebrow">Predicted winner</div>
-            <div className="result-team-row">
-              <TeamLogo size="lg" team={result.predicted_winner} />
-              <h3>{result.predicted_winner}</h3>
+        <>
+          <section className="predictor-results">
+            <div className="result-card highlight-card">
+              <div className="eyebrow">Predicted winner</div>
+              <div className="result-team-row">
+                <TeamLogo size="lg" team={result.predicted_winner} />
+                <h3>{result.predicted_winner}</h3>
+              </div>
+              <p>
+                {result.team_a}: {formatPercent(result.win_probability_team_a)} | {result.team_b}:{" "}
+                {formatPercent(result.win_probability_team_b)}
+              </p>
+              {typeof result.predicted_margin === "number" ? (
+                <p>Projected margin from Team A perspective: {result.predicted_margin.toFixed(1)}</p>
+              ) : null}
             </div>
-            <p>
-              {result.team_a}: {formatPercent(result.win_probability_team_a)} | {result.team_b}:{" "}
-              {formatPercent(result.win_probability_team_b)}
-            </p>
-            {typeof result.predicted_margin === "number" ? (
-              <p>Projected margin from Team A perspective: {result.predicted_margin.toFixed(1)}</p>
-            ) : null}
-          </div>
-          <div className="result-card">
-            <div className="eyebrow">Reasoning</div>
-            <ul className="reason-list">
-              {result.top_reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
+            <div className="result-card">
+              <div className="eyebrow">Reasoning</div>
+              <ul className="reason-list">
+                {result.top_reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          </section>
+          <section className="predictor-market-section">
+            <div className="eyebrow">Market context</div>
+            <h3>Market context</h3>
+            <MarketContextSection error={oddsError} loading={oddsLoading} odds={oddsContext} />
+          </section>
+        </>
       ) : null}
     </section>
   );

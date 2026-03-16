@@ -8,6 +8,45 @@ describe("BracketPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
     global.fetch = vi.fn((url, options) => {
+      if (String(url).includes("/odds")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            team_a: "Duke",
+            team_b: "Siena",
+            event_found: true,
+            bookmakers: [
+              {
+                key: "draftkings",
+                title: "DraftKings",
+                last_update: "2026-03-15T12:05:00Z",
+                moneyline: { team_a_price: -180, team_b_price: 150, team_a_implied_prob: 0.63, team_b_implied_prob: 0.37 },
+                spread: { team_a_line: -5, team_a_price: -110, team_b_line: 5, team_b_price: -110 },
+                total: null,
+              },
+            ],
+            consensus: {
+              team_a_moneyline_avg: -180,
+              team_b_moneyline_avg: 150,
+              team_a_implied_prob_avg: 0.63,
+              team_b_implied_prob_avg: 0.37,
+              spread_avg: -5,
+              total_avg: null,
+            },
+            model_vs_market: {
+              model_win_prob_team_a: 0.78,
+              market_implied_prob_team_a: 0.63,
+              moneyline_edge_team_a: 0.15,
+              model_margin_team_a: 8.4,
+              market_spread_team_a: -5,
+              spread_edge_team_a: 3.4,
+              edge_label: "Moderate edge",
+              interpretation: "Moderate model lean on Duke moneyline. Model leans Duke against the spread.",
+            },
+            message: null,
+          }),
+        });
+      }
       if (String(url).includes("/predict")) {
         const payload = JSON.parse(options?.body || "{}");
         return Promise.resolve({
@@ -51,19 +90,18 @@ describe("BracketPage", () => {
         .getAllByRole("button")
         .find((button) => button.textContent?.includes(label));
 
-    await user.click(pickButton("matchup-ff_south_16", "Lehigh"));
-    await user.click(pickButton("matchup-south_r1_1", "Florida"));
+    await user.click(pickButton("matchup-south_r1_1", "Prairie View A&M / Lehigh"));
     await user.click(pickButton("matchup-south_r1_2", "Clemson"));
-    await user.click(pickButton("matchup-south_r2_1", "Florida"));
+    await user.click(pickButton("matchup-south_r2_1", "Prairie View A&M / Lehigh"));
 
     await user.click(screen.getByTestId("details-south_r1_1"));
-    await user.click(screen.getByRole("button", { name: /Advance Lehigh/i }));
+    await user.click(screen.getByRole("button", { name: /Advance Florida/i }));
 
     const southRoundTwo = screen.getByTestId("matchup-south_r2_1");
-    expect(within(southRoundTwo).queryByRole("button", { name: /Florida/i })).not.toBeInTheDocument();
-    expect(within(southRoundTwo).getByRole("button", { name: /Lehigh/i })).toBeInTheDocument();
+    expect(within(southRoundTwo).queryByRole("button", { name: /Prairie View A&M \/ Lehigh/i })).not.toBeInTheDocument();
+    expect(within(southRoundTwo).getByRole("button", { name: /Florida/i })).toBeInTheDocument();
     expect(within(southRoundTwo).queryByRole("button", { name: /Clemson/i })).toBeInTheDocument();
-    expect(within(southRoundTwo).queryByRole("button", { name: /Lehigh/i })).not.toHaveClass("team-slot-selected");
+    expect(within(southRoundTwo).queryByRole("button", { name: /Florida/i })).not.toHaveClass("team-slot-selected");
   });
 
   it("renders the core bracket structure with regions and center rounds", () => {
@@ -78,7 +116,7 @@ describe("BracketPage", () => {
     expect(screen.getByText("Championship")).toBeInTheDocument();
   });
 
-  it("shows first four placeholders in the main bracket and does not show TBD in those slots", () => {
+  it("shows first four placeholders in the main bracket and keeps them selectable", () => {
     render(<BracketPage />);
 
     const southFeeder = screen.getByTestId("matchup-south_r1_1");
@@ -86,10 +124,47 @@ describe("BracketPage", () => {
     const midwestTopFeeder = screen.getByTestId("matchup-midwest_r1_1");
     const midwestPlayInFeeder = screen.getByTestId("matchup-midwest_r1_5");
 
-    expect(within(southFeeder).getByRole("button", { name: /Prairie View A&M \/ Lehigh/i })).toBeDisabled();
-    expect(within(westFeeder).getByRole("button", { name: /Texas \/ NC State/i })).toBeDisabled();
-    expect(within(midwestTopFeeder).getByRole("button", { name: /Howard \/ UMBC/i })).toBeDisabled();
-    expect(within(midwestPlayInFeeder).getByRole("button", { name: /Miami \(Ohio\) \/ SMU/i })).toBeDisabled();
+    expect(within(southFeeder).getByRole("button", { name: /Prairie View A&M \/ Lehigh/i })).not.toBeDisabled();
+    expect(within(westFeeder).getByRole("button", { name: /Texas \/ NC State/i })).not.toBeDisabled();
+    expect(within(midwestTopFeeder).getByRole("button", { name: /Howard \/ UMBC/i })).not.toBeDisabled();
+    expect(within(midwestPlayInFeeder).getByRole("button", { name: /Miami \(Ohio\) \/ SMU/i })).not.toBeDisabled();
     expect(within(southFeeder).queryByText(/^TBD$/i)).not.toBeInTheDocument();
+  });
+
+  it("allows a play-in placeholder slot to advance like a normal bracket team", async () => {
+    const user = userEvent.setup();
+    render(<BracketPage />);
+
+    const southFeeder = screen.getByTestId("matchup-south_r1_1");
+    const placeholderButton = within(southFeeder).getByRole("button", { name: /Prairie View A&M \/ Lehigh/i });
+
+    await user.click(placeholderButton);
+
+    expect(placeholderButton).toHaveClass("team-slot-selected");
+    expect(within(screen.getByTestId("matchup-south_r2_1")).getByRole("button", { name: /Prairie View A&M \/ Lehigh/i })).toBeInTheDocument();
+  });
+
+  it("does not require a separate manual first four pick flow", () => {
+    render(<BracketPage />);
+    expect(screen.queryByText("First Four")).not.toBeInTheDocument();
+  });
+
+  it("handles details for play-in placeholders without crashing", async () => {
+    const user = userEvent.setup();
+    render(<BracketPage />);
+
+    await user.click(screen.getByTestId("details-south_r1_1"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Prediction details will appear when both teams are known/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market lines are unavailable until both teams are fully resolved/i)).toBeInTheDocument();
+  });
+
+  it("toggles bracket debug layout guides", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<BracketPage />);
+
+    expect(container.querySelector(".bracket-debug-column")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Show Layout Debug/i }));
+    expect(container.querySelector(".bracket-debug-column")).toBeInTheDocument();
   });
 });

@@ -29,6 +29,20 @@ describe("Bracket app", () => {
           }),
         });
       }
+      if (String(url).includes("/odds")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            team_a: "Duke",
+            team_b: "Siena",
+            event_found: false,
+            bookmakers: [],
+            consensus: {},
+            model_vs_market: null,
+            message: "No market lines currently available for this matchup.",
+          }),
+        });
+      }
       throw new Error(`Unhandled fetch ${url}`);
     });
   });

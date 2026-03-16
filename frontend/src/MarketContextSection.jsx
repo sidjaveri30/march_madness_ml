@@ -1,0 +1,139 @@
+function formatPercent(value) {
+  return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—";
+}
+
+function formatAmerican(price) {
+  if (price === null || price === undefined) return "—";
+  const number = Number(price);
+  return number > 0 ? `+${number}` : `${number}`;
+}
+
+function formatLine(value) {
+  if (value === null || value === undefined) return "—";
+  const number = Number(value);
+  return number > 0 ? `+${number}` : `${number}`;
+}
+
+function formatNumber(value) {
+  return typeof value === "number" ? value.toFixed(1) : "—";
+}
+
+export default function MarketContextSection({ loading = false, error = "", odds = null }) {
+  if (loading) {
+    return <div className="market-context-empty">Loading market context...</div>;
+  }
+  if (error) {
+    return <div className="market-context-empty error">{error}</div>;
+  }
+  if (!odds) {
+    return null;
+  }
+  if (!odds.event_found) {
+    return <div className="market-context-empty">{odds.message || "No market lines currently available for this matchup."}</div>;
+  }
+
+  return (
+    <div className="market-context-grid">
+      <section className="modal-panel">
+        <div className="eyebrow">Market Odds</div>
+        <div className="market-book-list">
+          {odds.bookmakers.map((book) => (
+            <div className="market-book-row" key={book.key}>
+              <div className="market-book-head">
+                <strong>{book.title}</strong>
+                {book.last_update ? <span>{new Date(book.last_update).toLocaleString()}</span> : null}
+              </div>
+              {book.moneyline ? (
+                <div className="market-line-grid">
+                  <span>Moneyline</span>
+                  <span>{odds.team_a} {formatAmerican(book.moneyline.team_a_price)}</span>
+                  <span>{odds.team_b} {formatAmerican(book.moneyline.team_b_price)}</span>
+                </div>
+              ) : null}
+              {book.spread ? (
+                <div className="market-line-grid">
+                  <span>Spread</span>
+                  <span>{odds.team_a} {formatLine(book.spread.team_a_line)} ({formatAmerican(book.spread.team_a_price)})</span>
+                  <span>{odds.team_b} {formatLine(book.spread.team_b_line)} ({formatAmerican(book.spread.team_b_price)})</span>
+                </div>
+              ) : null}
+              {book.total ? (
+                <div className="market-line-grid">
+                  <span>Total</span>
+                  <span>O {formatNumber(book.total.points)} ({formatAmerican(book.total.over_price)})</span>
+                  <span>U {formatNumber(book.total.points)} ({formatAmerican(book.total.under_price)})</span>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="modal-panel">
+        <div className="eyebrow">Model vs Market</div>
+        {odds.model_vs_market ? (
+          <div className="market-summary">
+            <div className="market-summary-row">
+              <span>Model win probability</span>
+              <strong>{formatPercent(odds.model_vs_market.model_win_prob_team_a)}</strong>
+            </div>
+            <div className="market-summary-row">
+              <span>Market implied probability</span>
+              <strong>{formatPercent(odds.model_vs_market.market_implied_prob_team_a)}</strong>
+            </div>
+            <div className="market-summary-row">
+              <span>Probability edge</span>
+              <strong>{formatPercent(odds.model_vs_market.moneyline_edge_team_a)}</strong>
+            </div>
+            <div className="market-summary-row">
+              <span>Model margin</span>
+              <strong>{formatNumber(odds.model_vs_market.model_margin_team_a)}</strong>
+            </div>
+            <div className="market-summary-row">
+              <span>Consensus spread</span>
+              <strong>{formatLine(odds.model_vs_market.market_spread_team_a)}</strong>
+            </div>
+            <div className="market-summary-row">
+              <span>Margin vs spread</span>
+              <strong>{formatNumber(odds.model_vs_market.spread_edge_team_a)}</strong>
+            </div>
+            <div className="market-badge">{odds.model_vs_market.edge_label}</div>
+            <p className="subtle market-interpretation">{odds.model_vs_market.interpretation}</p>
+          </div>
+        ) : (
+          <p className="subtle">Market comparison becomes available once both model output and sportsbook lines are present.</p>
+        )}
+      </section>
+
+      <section className="modal-panel modal-panel-wide">
+        <div className="eyebrow">Consensus Line</div>
+        <div className="market-consensus-grid">
+          <div>
+            <span>{odds.team_a} implied probability</span>
+            <strong>{formatPercent(odds.consensus.team_a_implied_prob_avg)}</strong>
+          </div>
+          <div>
+            <span>{odds.team_b} implied probability</span>
+            <strong>{formatPercent(odds.consensus.team_b_implied_prob_avg)}</strong>
+          </div>
+          <div>
+            <span>{odds.team_a} average moneyline</span>
+            <strong>{formatAmerican(odds.consensus.team_a_moneyline_avg)}</strong>
+          </div>
+          <div>
+            <span>{odds.team_b} average moneyline</span>
+            <strong>{formatAmerican(odds.consensus.team_b_moneyline_avg)}</strong>
+          </div>
+          <div>
+            <span>{odds.team_a} spread</span>
+            <strong>{formatLine(odds.consensus.spread_avg)}</strong>
+          </div>
+          <div>
+            <span>Total</span>
+            <strong>{formatNumber(odds.consensus.total_avg)}</strong>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

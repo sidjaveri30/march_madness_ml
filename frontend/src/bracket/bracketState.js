@@ -1,5 +1,5 @@
 import { getAllMatchups, getFirstFourMatchup, INITIAL_ASSIGNMENTS } from "./bracketDefinition";
-import { createPlayInPlaceholder } from "./bracketTeams";
+import { createPlayInPlaceholder, sameTeam } from "./bracketTeams";
 
 function getOrderedMatchups(definition) {
   const roundOrder = {
@@ -56,7 +56,7 @@ function sanitizePicks(definition, state) {
       if (!currentPick) continue;
       const matchupState = { ...state, picks };
       const teams = getMatchupTeams(definition, matchupState, matchup.id).filter(Boolean);
-      if (!teams.includes(currentPick)) {
+      if (!teams.some((team) => sameTeam(team, currentPick))) {
         delete picks[matchup.id];
         changed = true;
       }
@@ -81,7 +81,7 @@ function applyWinnerPick(definition, state, matchupId, winner) {
 
 function setWinnerPick(definition, state, matchupId, winner) {
   if (!winner) return clearWinnerPick(definition, state, matchupId);
-  if (state.picks[matchupId] === winner) {
+  if (sameTeam(state.picks[matchupId], winner)) {
     return state;
   }
   return applyWinnerPick(definition, state, matchupId, winner);

@@ -6,16 +6,18 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.schemas import MessageResponse, PredictRequest, PredictResponse
+from src.api.schemas import MessageResponse, OddsQueryResponse, PredictRequest, PredictResponse
 from src.config.settings import settings
 from src.ingestion.pipeline import refresh_all_data
 from src.models.predictor import MatchupPredictor
 from src.models.training import train_all_models
+from src.services.odds_service import OddsService
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 predictor: MatchupPredictor | None = None
+odds_service: OddsService | None = None
 
 
 def _ensure_predictor() -> MatchupPredictor:
@@ -31,11 +33,20 @@ def _ensure_predictor() -> MatchupPredictor:
     return predictor
 
 
+def _ensure_odds_service() -> OddsService:
+    global odds_service
+    loaded_predictor = _ensure_predictor()
+    if odds_service is None or odds_service.predictor is not loaded_predictor:
+        odds_service = OddsService(predictor=loaded_predictor)
+    return odds_service
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    global predictor
+    global predictor, odds_service
     try:
         predictor = MatchupPredictor()
+        odds_service = OddsService(predictor=predictor)
     except Exception as exc:  # noqa: BLE001
         logger.info("Predictor not loaded at startup: %s", exc)
     yield
@@ -86,6 +97,18 @@ def predict(payload: PredictRequest) -> PredictResponse:
     return PredictResponse(**result.__dict__)
 
 
+@app.get("/odds", response_model=OddsQueryResponse)
+def odds(team_a: str, team_b: str) -> OddsQueryResponse:
+    service = _ensure_odds_service()
+    prediction = None
+    if "/" not in team_a and "/" not in team_b:
+        try:
+            prediction = _ensure_predictor().predict(team_a, team_b, neutral_site=True)
+        except ValueError:
+            prediction = None
+    return OddsQueryResponse(**service.get_matchup_odds(team_a, team_b, prediction=prediction))
+
+
 @app.post("/refresh-data", response_model=MessageResponse)
 def refresh_data() -> MessageResponse:
     metadata = refresh_all_data(force=True)
@@ -94,7 +117,8 @@ def refresh_data() -> MessageResponse:
 
 @app.post("/train", response_model=MessageResponse)
 def train() -> MessageResponse:
-    global predictor
+    global predictor, odds_service
     summary = train_all_models()
     predictor = MatchupPredictor()
+    odds_service = OddsService(predictor=predictor)
     return MessageResponse(message="Training complete", details={k: str(v) for k, v in summary.__dict__.items()})

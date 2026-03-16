@@ -1,109 +1,280 @@
 const BRACKET_LAYOUT = {
-  FIRST_ROUND_COL_WIDTH: 156,
-  LATER_ROUND_COL_WIDTH: 146,
-  ROUND_COL_GAP: 16,
-  CENTER_GAP: 22,
-  REGION_VERTICAL_GAP: 18,
-  MATCHUP_CARD_HEIGHT: 58,
-  MATCHUP_INTERNAL_ROW_HEIGHT: 20,
-  CARD_INNER_PADDING: 6,
-  MATCHUP_ROW_GAP: 4,
-  FIRST_ROUND_VERTICAL_GAP: 10,
-  SECOND_ROUND_VERTICAL_GAP: 10,
-  SWEET16_VERTICAL_GAP: 10,
-  ELITE8_VERTICAL_GAP: 10,
-  CONNECTOR_STUB_LENGTH: 14,
-  CONNECTOR_MID_LENGTH: 8,
-  CENTER_COLUMN_WIDTH: 286,
-  ROUND_TITLE_HEIGHT: 24,
-  FIRST_FOUR_COL_WIDTH: 156,
+  ROUND_COLUMN_WIDTH: 156,
+  ROUND_COLUMN_GAP: 28,
+  CARD_HEIGHT: 74,
+  TEAM_ROW_HEIGHT: 24,
+  FIRST_ROUND_VERTICAL_GAP: 18,
+  REGION_VERTICAL_OFFSET: 78,
+  REGION_SECTION_GAP: 108,
+  CONNECTOR_LENGTH: 18,
+  CENTER_COLUMN_WIDTH: 360,
+  CENTER_GAP: 44,
+  ROUND_HEADER_HEIGHT: 22,
+  REGION_LABEL_HEIGHT: 20,
+  BOARD_PADDING_X: 20,
+  BOARD_PADDING_Y: 18,
+  CHAMPIONSHIP_OFFSET_Y: 116,
+  SEMIFINAL_CARD_GAP: 24,
 };
 
-const BASE_VERTICAL_UNIT = BRACKET_LAYOUT.MATCHUP_CARD_HEIGHT + BRACKET_LAYOUT.FIRST_ROUND_VERTICAL_GAP;
-const REGION_BLOCK_WIDTH =
-  BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH +
-  BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH * 3 +
-  BRACKET_LAYOUT.ROUND_COL_GAP * 3;
-
-const ROUND_OFFSETS = {
-  secondRound: Math.round(BASE_VERTICAL_UNIT / 2),
-  sweet16: Math.round(BASE_VERTICAL_UNIT * 1.5),
-  elite8: Math.round(BASE_VERTICAL_UNIT * 3.5),
-  finalFour: Math.round(BASE_VERTICAL_UNIT * 3.5),
-  championship: Math.round(BASE_VERTICAL_UNIT * 5.5),
+const REGION_ROUNDS = ["firstRound", "secondRound", "sweet16", "elite8"];
+const REGION_ORDER = ["East", "South", "West", "Midwest"];
+const REGION_SIDE = {
+  East: "left",
+  South: "left",
+  West: "right",
+  Midwest: "right",
 };
+
+const REGION_BLOCK_WIDTH = BRACKET_LAYOUT.ROUND_COLUMN_WIDTH * 4 + BRACKET_LAYOUT.ROUND_COLUMN_GAP * 3;
+const CENTER_COLUMN_X = BRACKET_LAYOUT.BOARD_PADDING_X + REGION_BLOCK_WIDTH + BRACKET_LAYOUT.CENTER_GAP;
+const RIGHT_BLOCK_X = CENTER_COLUMN_X + BRACKET_LAYOUT.CENTER_COLUMN_WIDTH + BRACKET_LAYOUT.CENTER_GAP;
+const BOARD_WIDTH = RIGHT_BLOCK_X + REGION_BLOCK_WIDTH + BRACKET_LAYOUT.BOARD_PADDING_X;
+const CONNECTOR_ANCHOR = BRACKET_LAYOUT.CARD_HEIGHT / 2;
+const BASE_VERTICAL_UNIT = BRACKET_LAYOUT.CARD_HEIGHT + BRACKET_LAYOUT.FIRST_ROUND_VERTICAL_GAP;
+const REGION_HEIGHT = BRACKET_LAYOUT.CARD_HEIGHT + BASE_VERTICAL_UNIT * 7;
+const TOP_REGION_Y = BRACKET_LAYOUT.BOARD_PADDING_Y + BRACKET_LAYOUT.REGION_VERTICAL_OFFSET;
+const BOTTOM_REGION_Y = TOP_REGION_Y + REGION_HEIGHT + BRACKET_LAYOUT.REGION_SECTION_GAP;
 
 const LEFT_COLUMN_POSITIONS = {
-  firstRound: 0,
-  secondRound: BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH + BRACKET_LAYOUT.ROUND_COL_GAP,
-  sweet16: BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH + BRACKET_LAYOUT.ROUND_COL_GAP + BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH + BRACKET_LAYOUT.ROUND_COL_GAP,
-  elite8:
-    BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH +
-    BRACKET_LAYOUT.ROUND_COL_GAP +
-    BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH +
-    BRACKET_LAYOUT.ROUND_COL_GAP +
-    BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH +
-    BRACKET_LAYOUT.ROUND_COL_GAP,
+  firstRound: BRACKET_LAYOUT.BOARD_PADDING_X,
+  secondRound: BRACKET_LAYOUT.BOARD_PADDING_X + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP,
+  sweet16: BRACKET_LAYOUT.BOARD_PADDING_X + (BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP) * 2,
+  elite8: BRACKET_LAYOUT.BOARD_PADDING_X + (BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP) * 3,
 };
 
 const RIGHT_COLUMN_POSITIONS = {
-  elite8: 0,
-  sweet16: BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH + BRACKET_LAYOUT.ROUND_COL_GAP,
-  secondRound: BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH * 2 + BRACKET_LAYOUT.ROUND_COL_GAP * 2,
-  firstRound: BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH * 3 + BRACKET_LAYOUT.ROUND_COL_GAP * 3,
+  elite8: RIGHT_BLOCK_X,
+  sweet16: RIGHT_BLOCK_X + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP,
+  secondRound: RIGHT_BLOCK_X + (BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP) * 2,
+  firstRound: RIGHT_BLOCK_X + (BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP) * 3,
 };
 
-function getColumnWidth(roundKey) {
-  return roundKey === "firstRound" ? BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH : BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH;
-}
+const CENTER_MATCHUP_X = CENTER_COLUMN_X + (BRACKET_LAYOUT.CENTER_COLUMN_WIDTH - BRACKET_LAYOUT.ROUND_COLUMN_WIDTH) / 2;
+const FINAL_FOUR_LEFT_X = CENTER_COLUMN_X;
+const FINAL_FOUR_RIGHT_X = CENTER_COLUMN_X + BRACKET_LAYOUT.CENTER_COLUMN_WIDTH - BRACKET_LAYOUT.ROUND_COLUMN_WIDTH;
 
 function getRoundColumnX(side, roundKey) {
   return side === "left" ? LEFT_COLUMN_POSITIONS[roundKey] : RIGHT_COLUMN_POSITIONS[roundKey];
 }
 
 function getConnectorAnchor() {
-  return BRACKET_LAYOUT.MATCHUP_CARD_HEIGHT / 2;
+  return CONNECTOR_ANCHOR;
+}
+
+function getRoundBaseCenterY(roundKey, index) {
+  if (roundKey === "firstRound") {
+    return CONNECTOR_ANCHOR + index * BASE_VERTICAL_UNIT;
+  }
+  const parentRound =
+    roundKey === "secondRound"
+      ? "firstRound"
+      : roundKey === "sweet16"
+        ? "secondRound"
+        : "sweet16";
+  const first = getRoundBaseCenterY(parentRound, index * 2);
+  const second = getRoundBaseCenterY(parentRound, index * 2 + 1);
+  return (first + second) / 2;
+}
+
+function getMatchupCenterY(roundKey, index, regionY = 0) {
+  return regionY + getRoundBaseCenterY(roundKey, index);
+}
+
+function getRegionTop(region) {
+  return region === "East" || region === "West" ? TOP_REGION_Y : BOTTOM_REGION_Y;
+}
+
+function createConnectorPath(from, to, direction = "right") {
+  const midX = direction === "right" ? from.x + BRACKET_LAYOUT.CONNECTOR_LENGTH : from.x - BRACKET_LAYOUT.CONNECTOR_LENGTH;
+  return `M ${from.x} ${from.y} H ${midX} V ${to.y} H ${to.x}`;
+}
+
+function buildRegionLayout(definition, region, side) {
+  const rounds = definition.regions[region];
+  const regionY = getRegionTop(region);
+  const cards = [];
+
+  REGION_ROUNDS.forEach((roundKey) => {
+    rounds[roundKey].forEach((matchup, index) => {
+      const centerY = getMatchupCenterY(roundKey, index, regionY);
+      cards.push({
+        matchup,
+        roundKey,
+        side,
+        region,
+        x: getRoundColumnX(side, roundKey),
+        width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
+        y: centerY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
+        centerY,
+      });
+    });
+  });
+
+  return cards;
+}
+
+function computeBracketLayout(definition) {
+  const regionCards = REGION_ORDER.flatMap((region) => buildRegionLayout(definition, region, REGION_SIDE[region]));
+  const cardLookup = Object.fromEntries(regionCards.map((card) => [card.matchup.id, card]));
+
+  const semifinalCenterY = (cardLookup.east_e8.centerY + cardLookup.south_e8.centerY) / 2;
+  const championshipCenterY = semifinalCenterY + BRACKET_LAYOUT.CHAMPIONSHIP_OFFSET_Y;
+
+  const centerCards = [
+    {
+      matchup: definition.finalRounds.finalFour[0],
+      roundKey: "finalFour",
+      side: "center-left",
+      region: "Final Four",
+      x: FINAL_FOUR_LEFT_X,
+      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
+      y: semifinalCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
+      centerY: semifinalCenterY,
+    },
+    {
+      matchup: definition.finalRounds.finalFour[1],
+      roundKey: "finalFour",
+      side: "center-right",
+      region: "Final Four",
+      x: FINAL_FOUR_RIGHT_X,
+      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
+      y: semifinalCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
+      centerY: semifinalCenterY,
+    },
+    {
+      matchup: definition.finalRounds.championship[0],
+      roundKey: "championship",
+      side: "center",
+      region: "Championship",
+      x: CENTER_MATCHUP_X,
+      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
+      y: championshipCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
+      centerY: championshipCenterY,
+    },
+  ];
+
+  centerCards.forEach((card) => {
+    cardLookup[card.matchup.id] = card;
+  });
+
+  const allCards = [...regionCards, ...centerCards];
+
+  const connectors = [];
+  for (const card of allCards) {
+    const feederSlots = card.matchup.slots.filter((slot) => slot.source.type === "winner");
+    if (feederSlots.length === 0) continue;
+
+    feederSlots.forEach((slot) => {
+      const feeder = cardLookup[slot.source.matchupId];
+      if (!feeder) return;
+
+      const feederDirection = feeder.side === "right" || feeder.side === "center-right" ? "left" : "right";
+      const targetDirection = card.side === "right" || card.side === "center-right" ? "right" : "left";
+
+      const from =
+        feederDirection === "right"
+          ? { x: feeder.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, y: feeder.centerY }
+          : { x: feeder.x, y: feeder.centerY };
+
+      const to =
+        targetDirection === "left"
+          ? { x: card.x, y: card.centerY }
+          : { x: card.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, y: card.centerY };
+
+      connectors.push({
+        id: `${slot.source.matchupId}__${card.matchup.id}`,
+        path: createConnectorPath(from, to, from.x <= to.x ? "right" : "left"),
+        from,
+        to,
+      });
+    });
+  }
+
+  const roundHeaders = [
+    { key: "left-firstRound", label: "First Round", x: LEFT_COLUMN_POSITIONS.firstRound, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "left-secondRound", label: "Second Round", x: LEFT_COLUMN_POSITIONS.secondRound, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "left-sweet16", label: "Sweet 16", x: LEFT_COLUMN_POSITIONS.sweet16, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "left-elite8", label: "Elite 8", x: LEFT_COLUMN_POSITIONS.elite8, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "center-final-four", label: "Final Four", x: CENTER_COLUMN_X, width: BRACKET_LAYOUT.CENTER_COLUMN_WIDTH, top: 0 },
+    { key: "center-championship", label: "Championship", x: CENTER_MATCHUP_X, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 20 },
+    { key: "right-elite8", label: "Elite 8", x: RIGHT_COLUMN_POSITIONS.elite8, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "right-sweet16", label: "Sweet 16", x: RIGHT_COLUMN_POSITIONS.sweet16, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "right-secondRound", label: "Second Round", x: RIGHT_COLUMN_POSITIONS.secondRound, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+    { key: "right-firstRound", label: "First Round", x: RIGHT_COLUMN_POSITIONS.firstRound, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
+  ];
+
+  const regionLabels = REGION_ORDER.map((region) => ({
+    region,
+    x: REGION_SIDE[region] === "left" ? LEFT_COLUMN_POSITIONS.firstRound : RIGHT_COLUMN_POSITIONS.elite8,
+    y: getRegionTop(region) - 34,
+    width: REGION_BLOCK_WIDTH,
+    side: REGION_SIDE[region],
+  }));
+
+  const columnGuides = [
+    ...Object.entries(LEFT_COLUMN_POSITIONS).map(([roundKey, x]) => ({ key: `guide-left-${roundKey}`, x })),
+    { key: "guide-center-left", x: FINAL_FOUR_LEFT_X },
+    { key: "guide-center-right", x: FINAL_FOUR_RIGHT_X },
+    { key: "guide-center-championship", x: CENTER_MATCHUP_X },
+    ...Object.entries(RIGHT_COLUMN_POSITIONS).map(([roundKey, x]) => ({ key: `guide-right-${roundKey}`, x })),
+  ];
+
+  const boardHeight = Math.max(
+    BOTTOM_REGION_Y + REGION_HEIGHT + BRACKET_LAYOUT.BOARD_PADDING_Y,
+    championshipCenterY + BRACKET_LAYOUT.CARD_HEIGHT / 2 + BRACKET_LAYOUT.BOARD_PADDING_Y,
+  );
+
+  return {
+    board: {
+      width: BOARD_WIDTH,
+      height: boardHeight,
+    },
+    cards: allCards,
+    connectors,
+    roundHeaders,
+    regionLabels,
+    guides: {
+      columns: columnGuides,
+      points: allCards.map((card) => ({
+        key: `point-${card.matchup.id}`,
+        x: card.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH / 2,
+        y: card.centerY,
+      })),
+      anchors: connectors.flatMap((connector) => [
+        { key: `anchor-from-${connector.id}`, x: connector.from.x, y: connector.from.y },
+        { key: `anchor-to-${connector.id}`, x: connector.to.x, y: connector.to.y },
+      ]),
+    },
+  };
 }
 
 function bracketLayoutStyle() {
   return {
-    "--first-round-col-width": `${BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH}px`,
-    "--later-round-col-width": `${BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH}px`,
-    "--round-gap-x": `${BRACKET_LAYOUT.ROUND_COL_GAP}px`,
-    "--center-gap": `${BRACKET_LAYOUT.CENTER_GAP}px`,
-    "--region-block-width": `${REGION_BLOCK_WIDTH}px`,
-    "--region-gap-y": `${BRACKET_LAYOUT.REGION_VERTICAL_GAP}px`,
-    "--matchup-card-height": `${BRACKET_LAYOUT.MATCHUP_CARD_HEIGHT}px`,
-    "--matchup-row-height": `${BRACKET_LAYOUT.MATCHUP_INTERNAL_ROW_HEIGHT}px`,
-    "--card-padding": `${BRACKET_LAYOUT.CARD_INNER_PADDING}px`,
-    "--matchup-row-gap": `${BRACKET_LAYOUT.MATCHUP_ROW_GAP}px`,
-    "--first-round-gap-y": `${BRACKET_LAYOUT.FIRST_ROUND_VERTICAL_GAP}px`,
-    "--second-round-gap-y": `${BRACKET_LAYOUT.SECOND_ROUND_VERTICAL_GAP}px`,
-    "--sweet16-gap-y": `${BRACKET_LAYOUT.SWEET16_VERTICAL_GAP}px`,
-    "--elite8-gap-y": `${BRACKET_LAYOUT.ELITE8_VERTICAL_GAP}px`,
-    "--connector-stub-length": `${BRACKET_LAYOUT.CONNECTOR_STUB_LENGTH}px`,
-    "--connector-mid-length": `${BRACKET_LAYOUT.CONNECTOR_MID_LENGTH}px`,
-    "--center-column-width": `${BRACKET_LAYOUT.CENTER_COLUMN_WIDTH}px`,
-    "--round-title-height": `${BRACKET_LAYOUT.ROUND_TITLE_HEIGHT}px`,
-    "--connector-anchor": `${getConnectorAnchor()}px`,
-    "--round-offset-second": `${ROUND_OFFSETS.secondRound}px`,
-    "--round-offset-sweet16": `${ROUND_OFFSETS.sweet16}px`,
-    "--round-offset-elite8": `${ROUND_OFFSETS.elite8}px`,
-    "--round-offset-finalFour": `${ROUND_OFFSETS.finalFour}px`,
-    "--round-offset-championship": `${ROUND_OFFSETS.championship}px`,
-    "--first-four-col-width": `${BRACKET_LAYOUT.FIRST_FOUR_COL_WIDTH}px`,
+    "--round-column-width": `${BRACKET_LAYOUT.ROUND_COLUMN_WIDTH}px`,
+    "--round-column-gap": `${BRACKET_LAYOUT.ROUND_COLUMN_GAP}px`,
+    "--card-height": `${BRACKET_LAYOUT.CARD_HEIGHT}px`,
+    "--team-row-height": `${BRACKET_LAYOUT.TEAM_ROW_HEIGHT}px`,
+    "--connector-length": `${BRACKET_LAYOUT.CONNECTOR_LENGTH}px`,
   };
 }
 
 export {
   BASE_VERTICAL_UNIT,
+  BOARD_WIDTH,
   BRACKET_LAYOUT,
+  CENTER_COLUMN_X,
+  CENTER_MATCHUP_X,
+  CONNECTOR_ANCHOR,
   LEFT_COLUMN_POSITIONS,
   REGION_BLOCK_WIDTH,
+  REGION_HEIGHT,
   RIGHT_COLUMN_POSITIONS,
-  ROUND_OFFSETS,
+  TOP_REGION_Y,
+  BOTTOM_REGION_Y,
   bracketLayoutStyle,
-  getColumnWidth,
+  computeBracketLayout,
   getConnectorAnchor,
+  getMatchupCenterY,
   getRoundColumnX,
 };

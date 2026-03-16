@@ -3,11 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { bracketDefinition } from "./bracketDefinition";
 import { applyWinnerPick, clearWinnerPick, createBracketState, getChampion, getMatchupTeams, setWinnerPick } from "./bracketState";
 import { clearBracketState, loadBracketState, saveBracketState } from "./bracketStorage";
-import { bracketLayoutStyle } from "./bracketLayout";
+import BracketBoard from "./BracketBoard";
 import MatchupDetailsModal from "./MatchupDetailsModal";
-import { isPickableTeam } from "./bracketTeams";
-import RegionBracket from "./RegionBracket";
-import RoundColumn from "./RoundColumn";
+import { isResolvedTeam, sameTeam } from "./bracketTeams";
 import SaveBracketControls from "./SaveBracketControls";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -21,6 +19,7 @@ export default function BracketPage() {
   const [selectedMatchup, setSelectedMatchup] = useState(null);
   const [predictionCache, setPredictionCache] = useState({});
   const [saveStatus, setSaveStatus] = useState("");
+  const [debugLayout, setDebugLayout] = useState(false);
 
   useEffect(() => {
     saveBracketState(bracketState);
@@ -29,7 +28,7 @@ export default function BracketPage() {
   useEffect(() => {
     if (!selectedMatchup) return;
     const teams = getMatchupTeams(bracketDefinition, bracketState, selectedMatchup.id);
-    if (teams.some((team) => !isPickableTeam(team))) return;
+    if (teams.some((team) => !isResolvedTeam(team))) return;
 
     const key = createPredictionKey(teams);
     if (predictionCache[key]?.data || predictionCache[key]?.loading) return;
@@ -55,7 +54,7 @@ export default function BracketPage() {
 
   function handlePick(matchupId, winner) {
     const currentWinner = bracketState.picks[matchupId];
-    if (currentWinner === winner) {
+    if (sameTeam(currentWinner, winner)) {
       setBracketState(clearWinnerPick(bracketDefinition, bracketState, matchupId));
       return;
     }
@@ -106,12 +105,12 @@ export default function BracketPage() {
 
   const selectedTeams = selectedMatchup ? getMatchupTeams(bracketDefinition, bracketState, selectedMatchup.id) : [];
   const selectedPrediction =
-    selectedMatchup && selectedTeams.every((team) => isPickableTeam(team))
+    selectedMatchup && selectedTeams.every((team) => isResolvedTeam(team))
       ? predictionCache[createPredictionKey(selectedTeams)]
       : null;
 
   return (
-    <section className="mode-panel bracket-mode bracket-mode-clean" style={bracketLayoutStyle()}>
+    <section className="mode-panel bracket-mode bracket-mode-clean">
       <section className="bracket-toolbar">
         <div className="bracket-title-block">
           <div className="eyebrow">2026 NCAA Tournament</div>
@@ -123,6 +122,9 @@ export default function BracketPage() {
             <span className="metric-label">Champion</span>
             <strong>{champion || "TBD"}</strong>
           </div>
+          <button className={`secondary-button ${debugLayout ? "secondary-button-active" : ""}`} onClick={() => setDebugLayout((current) => !current)} type="button">
+            {debugLayout ? "Hide Layout Debug" : "Show Layout Debug"}
+          </button>
           <div className="save-controls-wrap">
             <SaveBracketControls
               onExport={handleExport}
@@ -135,75 +137,16 @@ export default function BracketPage() {
         </div>
       </section>
 
-      <section className="first-four-strip bracket-lane">
-        <RoundColumn
+      <div className="bracket-board-shell">
+        <BracketBoard
+          debugLayout={debugLayout}
+          definition={bracketDefinition}
           getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
           getWinner={(matchupId) => bracketState.picks[matchupId]}
-          matchups={bracketDefinition.firstFour}
           onDetails={(matchup) => setSelectedMatchup(matchup)}
           onPick={handlePick}
-          roundKey="firstFour"
-          side="center"
-          title="First Four"
         />
-      </section>
-
-      <section className="visual-bracket espn-bracket">
-        <div className="bracket-side bracket-side-left">
-          {bracketDefinition.layout.leftRegions.map((region) => (
-            <RegionBracket
-              getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
-              getWinner={(matchupId) => bracketState.picks[matchupId]}
-              key={region}
-              onDetails={(matchup) => setSelectedMatchup(matchup)}
-              onPick={handlePick}
-              region={region}
-              rounds={bracketDefinition.regions[region]}
-              side="left"
-            />
-          ))}
-        </div>
-
-        <div className="bracket-center">
-          <div className="center-stage">
-            <RoundColumn
-              getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
-              getWinner={(matchupId) => bracketState.picks[matchupId]}
-              matchups={bracketDefinition.finalRounds.finalFour}
-              onDetails={(matchup) => setSelectedMatchup(matchup)}
-              onPick={handlePick}
-              roundKey="finalFour"
-              side="center"
-              title="Final Four"
-            />
-            <RoundColumn
-              getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
-              getWinner={(matchupId) => bracketState.picks[matchupId]}
-              matchups={bracketDefinition.finalRounds.championship}
-              onDetails={(matchup) => setSelectedMatchup(matchup)}
-              onPick={handlePick}
-              roundKey="championship"
-              side="center"
-              title="Championship"
-            />
-          </div>
-        </div>
-
-        <div className="bracket-side bracket-side-right">
-          {bracketDefinition.layout.rightRegions.map((region) => (
-            <RegionBracket
-              getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
-              getWinner={(matchupId) => bracketState.picks[matchupId]}
-              key={region}
-              onDetails={(matchup) => setSelectedMatchup(matchup)}
-              onPick={handlePick}
-              region={region}
-              rounds={bracketDefinition.regions[region]}
-              side="right"
-            />
-          ))}
-        </div>
-      </section>
+      </div>
 
       <MatchupDetailsModal
         matchup={selectedMatchup}

@@ -42,9 +42,11 @@ High-level flow:
    Builds a KenPom-first matchup dataset with schedule-adjusted support features, explicit offense-vs-defense interaction terms, and a reduced dependence on raw record.
 5. `src/models/training.py`
    Trains a logistic regression baseline and a stronger `HistGradientBoostingClassifier`, evaluates them, and persists the best classifier plus a margin regressor.
-6. `src/api/app.py`
-   Exposes `/health`, `/teams`, `/predict`, `/refresh-data`, and `/train`.
-7. `frontend/`
+6. `src/services/odds_service.py`
+   Pulls structured NCAAB sportsbook lines from The Odds API, matches events to normalized team names, and computes conservative model-vs-market context.
+7. `src/api/app.py`
+   Exposes `/health`, `/teams`, `/predict`, `/odds`, `/refresh-data`, and `/train`.
+8. `frontend/`
    React + Vite app with both matchup insight and a polished bracket-builder workspace.
 
 ## Data Sources
@@ -133,6 +135,7 @@ Then set:
 ```env
 KENPOM_EMAIL=your_email_here
 KENPOM_PASSWORD=your_password_here
+ODDS_API_KEY=your_odds_api_key_here
 ```
 
 Do not commit real credentials.
@@ -188,6 +191,7 @@ Backend endpoints:
 - `GET /health`
 - `GET /teams`
 - `POST /predict`
+- `GET /odds`
 - `POST /refresh-data`
 - `POST /train`
 
@@ -225,12 +229,20 @@ The bracket workspace supports:
 - opening a details modal for any matchup
 - local browser save / restore plus JSON export / import
 
+Matchup details now also include sportsbook market context when odds are available:
+
+- structured moneyline / spread / total data from The Odds API
+- DraftKings and FanDuel prioritized when present
+- implied probability and model-vs-market comparison
+- conservative edge language such as `No clear edge`, `Small edge`, and `Moderate edge`
+
 ## Caching Behavior
 
 Caching is built in so the app does not need to re-authenticate against KenPom every time after the initial fetch unless you explicitly refresh.
 
 - KenPom tables are cached in `data/cache/kenpom/`
 - Sports Reference tables are cached in `data/cache/sports_reference/`
+- odds feed responses are cached in `data/cache/odds/`
 - processed datasets are written to `data/processed/`
 - training artifacts are written to `models_artifacts/`
 

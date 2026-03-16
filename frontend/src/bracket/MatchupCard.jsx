@@ -1,13 +1,13 @@
 import TeamSlot from "./TeamSlot";
-import { isPickableTeam } from "./bracketTeams";
+import { isPickableTeam, sameTeam } from "./bracketTeams";
 
-export default function MatchupCard({ matchup, teams, winner, onPick, onDetails, side }) {
+export default function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = null }) {
   const [teamA, teamB] = teams;
   const canPickA = isPickableTeam(teamA);
   const canPickB = isPickableTeam(teamB);
 
   return (
-    <article className={`matchup-card matchup-card-${side}`} data-testid={`matchup-${matchup.id}`}>
+    <article className={`matchup-card matchup-card-${side}`} data-testid={`matchup-${matchup.id}`} style={style}>
       <div className="matchup-card-header">
         <div className="matchup-meta">
           <div className="matchup-label">{matchup.label}</div>
@@ -27,14 +27,14 @@ export default function MatchupCard({ matchup, teams, winner, onPick, onDetails,
       <div className="matchup-teams">
         <TeamSlot
           isDisabled={!canPickA}
-          isSelected={winner === teamA}
+          isSelected={sameTeam(winner, teamA)}
           onClick={() => canPickA && onPick(teamA)}
           seed={matchup.slots[0]?.seed}
           team={teamA}
         />
         <TeamSlot
           isDisabled={!canPickB}
-          isSelected={winner === teamB}
+          isSelected={sameTeam(winner, teamB)}
           onClick={() => canPickB && onPick(teamB)}
           seed={matchup.slots[1]?.seed}
           team={teamB}

@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
 
+import { bracketDefinition } from "./bracketDefinition";
 import {
   BRACKET_LAYOUT,
   LEFT_COLUMN_POSITIONS,
-  REGION_BLOCK_WIDTH,
   RIGHT_COLUMN_POSITIONS,
-  ROUND_OFFSETS,
-  getColumnWidth,
+  computeBracketLayout,
   getConnectorAnchor,
+  getMatchupCenterY,
   getRoundColumnX,
 } from "./bracketLayout";
 
 describe("bracketLayout", () => {
   it("uses symmetric x positions for mirrored round columns", () => {
-    expect(getRoundColumnX("left", "secondRound")).toBe(LEFT_COLUMN_POSITIONS.secondRound);
-    expect(getRoundColumnX("right", "secondRound")).toBe(RIGHT_COLUMN_POSITIONS.secondRound);
-    expect(REGION_BLOCK_WIDTH).toBeGreaterThan(LEFT_COLUMN_POSITIONS.elite8);
-    expect(getColumnWidth("firstRound")).toBe(BRACKET_LAYOUT.FIRST_ROUND_COL_WIDTH);
-    expect(getColumnWidth("secondRound")).toBe(BRACKET_LAYOUT.LATER_ROUND_COL_WIDTH);
+    expect(getRoundColumnX("left", "firstRound")).toBe(LEFT_COLUMN_POSITIONS.firstRound);
+    expect(getRoundColumnX("right", "firstRound")).toBe(RIGHT_COLUMN_POSITIONS.firstRound);
+    expect(LEFT_COLUMN_POSITIONS.secondRound - LEFT_COLUMN_POSITIONS.firstRound).toBe(
+      RIGHT_COLUMN_POSITIONS.firstRound - RIGHT_COLUMN_POSITIONS.secondRound,
+    );
     expect(LEFT_COLUMN_POSITIONS.sweet16 - LEFT_COLUMN_POSITIONS.secondRound).toBe(
       RIGHT_COLUMN_POSITIONS.secondRound - RIGHT_COLUMN_POSITIONS.sweet16,
     );
@@ -26,15 +26,27 @@ describe("bracketLayout", () => {
     );
   });
 
-  it("uses deterministic vertical centering offsets by round", () => {
-    expect(ROUND_OFFSETS.secondRound).toBe(Math.round((BRACKET_LAYOUT.MATCHUP_CARD_HEIGHT + BRACKET_LAYOUT.FIRST_ROUND_VERTICAL_GAP) / 2));
-    expect(ROUND_OFFSETS.sweet16).toBeGreaterThan(ROUND_OFFSETS.secondRound);
-    expect(ROUND_OFFSETS.elite8).toBeGreaterThan(ROUND_OFFSETS.sweet16);
-    expect(ROUND_OFFSETS.finalFour).toBe(ROUND_OFFSETS.elite8);
-    expect(ROUND_OFFSETS.championship).toBeGreaterThan(ROUND_OFFSETS.finalFour);
+  it("positions later-round regional matchups at feeder midpoints", () => {
+    const regionTop = 100;
+    expect(getMatchupCenterY("secondRound", 0, regionTop)).toBe(
+      (getMatchupCenterY("firstRound", 0, regionTop) + getMatchupCenterY("firstRound", 1, regionTop)) / 2,
+    );
+    expect(getMatchupCenterY("sweet16", 0, regionTop)).toBe(
+      (getMatchupCenterY("secondRound", 0, regionTop) + getMatchupCenterY("secondRound", 1, regionTop)) / 2,
+    );
+    expect(getMatchupCenterY("elite8", 0, regionTop)).toBe(
+      (getMatchupCenterY("sweet16", 0, regionTop) + getMatchupCenterY("sweet16", 1, regionTop)) / 2,
+    );
   });
 
   it("anchors connector lines to matchup card midpoints", () => {
-    expect(getConnectorAnchor()).toBe(BRACKET_LAYOUT.MATCHUP_CARD_HEIGHT / 2);
+    const layout = computeBracketLayout(bracketDefinition);
+    expect(getConnectorAnchor()).toBe(BRACKET_LAYOUT.CARD_HEIGHT / 2);
+    expect(layout.connectors.length).toBeGreaterThan(0);
+    const sampleConnector = layout.connectors[0];
+    const sourceCard = layout.cards.find((card) => sampleConnector.id.startsWith(`${card.matchup.id}__`));
+    const targetCard = layout.cards.find((card) => sampleConnector.id.endsWith(`__${card.matchup.id}`));
+    expect(sampleConnector.from.y).toBe(sourceCard.centerY);
+    expect(sampleConnector.to.y).toBe(targetCard.centerY);
   });
 });

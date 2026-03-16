@@ -23,3 +23,13 @@ class PredictResponse(BaseModel):
 class MessageResponse(BaseModel):
     message: str
     details: dict[str, str] | None = None
+
+
+class OddsQueryResponse(BaseModel):
+    team_a: str
+    team_b: str
+    event_found: bool
+    bookmakers: list[dict[str, object]]
+    consensus: dict[str, float | None]
+    model_vs_market: dict[str, object] | None = None
+    message: str | None = None

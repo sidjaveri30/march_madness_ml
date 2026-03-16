@@ -7,7 +7,7 @@ export default function TeamSlot({ team, seed, isSelected, isDisabled, onClick }
   return (
     <button
       className={`team-slot ${isSelected ? "team-slot-selected" : ""} ${isPlaceholder ? "team-slot-placeholder" : ""}`}
-      disabled={isDisabled || !team || isPlaceholder}
+      disabled={isDisabled || !team}
       onClick={onClick}
       type="button"
     >

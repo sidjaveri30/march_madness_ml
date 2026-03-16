@@ -31,6 +31,11 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:8000",
         alias="FRONTEND_API_URL",
     )
+    odds_api_key: str = Field(default="", alias="ODDS_API_KEY")
+    odds_region: str = Field(default="us", alias="ODDS_REGION")
+    odds_bookmakers: str = Field(default="draftkings,fanduel", alias="ODDS_BOOKMAKERS")
+    odds_markets: str = Field(default="h2h,spreads,totals", alias="ODDS_MARKETS")
+    odds_cache_ttl_minutes: int = Field(default=20, alias="ODDS_CACHE_TTL_MINUTES")
 
     @property
     def raw_data_dir(self) -> Path:
