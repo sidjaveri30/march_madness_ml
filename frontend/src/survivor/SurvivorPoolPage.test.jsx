@@ -6,7 +6,7 @@ import { bracketDefinition, getAllMatchups } from "../bracket/bracketDefinition"
 import { applyWinnerPick, createBracketState, getMatchupTeams } from "../bracket/bracketState";
 import SurvivorPoolPage from "./SurvivorPoolPage";
 
-function buildLiveFeedOverride({ live = false, resolvedFirstRound = false } = {}) {
+function buildLiveFeedOverride({ live = false, resolvedFirstRound = false, started = false } = {}) {
   let state = createBracketState(bracketDefinition);
   const firstRoundMatchups = getAllMatchups(bracketDefinition).filter((matchup) => matchup.round === "firstRound");
   const games = Object.fromEntries(
@@ -15,7 +15,7 @@ function buildLiveFeedOverride({ live = false, resolvedFirstRound = false } = {}
       {
         matchupId: matchup.id,
         status: live ? "live" : "upcoming",
-        startTime: `2099-03-${20 + (index % 4)}T1${index % 10}:00:00Z`,
+        startTime: started ? `2000-03-${20 + (index % 4)}T1${index % 10}:00:00Z` : `2099-03-${20 + (index % 4)}T1${index % 10}:00:00Z`,
         scoreA: 70,
         scoreB: 66,
       },
@@ -91,5 +91,20 @@ describe("SurvivorPoolPage", () => {
     await user.click(screen.getByRole("button", { name: "Save Round Picks" }));
 
     expect(screen.getAllByText(/LIVE/i).length).toBeGreaterThan(0);
+  });
+
+  it("locks normal editing once the round has started and allows admin override", async () => {
+    const user = userEvent.setup();
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ started: true })} />);
+
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+
+    expect(screen.getByText(/Picks are locked because Round of 64 has started/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save Round Picks" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Enable Admin Mode" }));
+    expect(screen.getByText("Admin Override Enabled")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save Override Picks" })).not.toBeDisabled();
   });
 });

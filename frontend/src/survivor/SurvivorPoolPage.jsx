@@ -19,6 +19,7 @@ import {
   getEliminatedPlayers,
   getNextRoundContext,
   getPlayerRoundPick,
+  getRoundLockStatus,
   processRoundResults,
   recomputePoolState,
   resetPoolProgress,
@@ -48,6 +49,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const [resultsError, setResultsError] = useState("");
   const [resultsMessage, setResultsMessage] = useState("");
   const [rollbackRoundKey, setRollbackRoundKey] = useState("");
+  const [adminMode, setAdminMode] = useState(false);
   const liveFeedFromStore = useLiveBracketFeed({ definition: bracketDefinition, disabled: Boolean(liveFeedOverride) });
   const liveFeed = liveFeedOverride || liveFeedFromStore;
   const fallbackBracketState = useMemo(() => createBracketState(bracketDefinition), []);
@@ -78,6 +80,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const activePlayers = useMemo(() => getActivePlayers(pool), [pool]);
   const eliminatedPlayers = useMemo(() => getEliminatedPlayers(pool), [pool]);
   const selectedPlayer = pool.players.find((player) => player.id === selectedPlayerId) || null;
+  const roundLock = useMemo(() => getRoundLockStatus(currentRound, new Date()), [currentRound]);
 
   useEffect(() => {
     if (selectedPlayerId && pool.players.some((player) => player.id === selectedPlayerId && !player.eliminated)) return;
@@ -128,7 +131,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       return;
     }
 
-    const result = setPlayerRoundPicks(pool, selectedPlayerId, currentRound, selectedTeamIds, new Date());
+    const result = setPlayerRoundPicks(pool, selectedPlayerId, currentRound, selectedTeamIds, new Date(), { adminOverride: adminMode });
     if (result.error) {
       setPickError(result.error);
       return;
@@ -202,6 +205,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
           <p className="subtle">
             Add players, pick surviving teams from the official bracket, and use host controls to correct mistakes without touching localStorage manually.
           </p>
+          {adminMode ? <div className="save-status">Admin Override Enabled: round locks can be bypassed for corrections.</div> : null}
           {liveFeed.error ? <div className="inline-error">{liveFeed.error}</div> : null}
         </div>
         <div className="survivor-hero-meta">
@@ -231,6 +235,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       <PlayerManagementSection onAddPlayer={addPlayer} onRemovePlayer={removePlayer} onRenamePlayer={renamePlayer} pool={pool} />
 
       <PickEntrySection
+        adminMode={adminMode}
         now={new Date()}
         onSubmitPicks={handleSubmitPicks}
         pickError={pickError}
@@ -244,8 +249,11 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       />
 
       <AdminToolsSection
+        adminMode={adminMode}
         currentRound={currentRound}
+        lockStatus={roundLock}
         onClearCurrentPicks={handleClearCurrentPicks}
+        onToggleAdminMode={() => setAdminMode((current) => !current)}
         onResetPool={handleResetPool}
         onRollbackRound={handleRollbackRound}
         pool={pool}

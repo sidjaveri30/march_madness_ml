@@ -1397,12 +1397,20 @@ td:last-child {
   gap: 10px;
 }
 
+.survivor-dense-stack {
+  gap: 10px;
+}
+
 .survivor-selected-pick-card,
 .survivor-player-status-card {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #ffffff;
+}
+
+.survivor-player-status-card-compact {
+  padding: 10px 12px;
 }
 
 .survivor-player-status-card-eliminated {
@@ -1453,6 +1461,63 @@ td:last-child {
 .survivor-pick-icon-accent {
   background: rgba(0, 87, 184, 0.08);
   color: var(--accent);
+}
+
+.survivor-pick-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.survivor-pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.survivor-pick-chip-success {
+  border-color: rgba(21, 128, 61, 0.18);
+}
+
+.survivor-pick-chip-danger {
+  border-color: rgba(194, 65, 12, 0.18);
+}
+
+.survivor-pick-chip-accent {
+  border-color: rgba(0, 87, 184, 0.18);
+}
+
+.survivor-matchup-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.survivor-matchup-compact-row {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  display: grid;
+  gap: 8px;
+}
+
+.survivor-matchup-compact-teams {
+  display: grid;
+  gap: 6px;
+}
+
+.survivor-matchup-compact-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
 }
 
 .survivor-elimination-reason {
@@ -1564,7 +1629,8 @@ td:last-child {
   .survivor-config-grid,
   .survivor-pick-grid,
   .survivor-game-fields,
-  .survivor-picker-layout {
+  .survivor-picker-layout,
+  .survivor-matchup-compact-grid {
     grid-template-columns: 1fr;
   }
 

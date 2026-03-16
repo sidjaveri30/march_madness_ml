@@ -142,6 +142,28 @@ function getGameStatus(gameInfo, now = new Date()) {
   return start <= now ? "locked" : "open";
 }
 
+function getRoundLockStatus(roundContext, now = new Date()) {
+  if (!roundContext) {
+    return { locked: false, earliestStartTime: null, reason: "" };
+  }
+
+  const earliestStart = roundContext.matchups
+    .map((matchup) => matchup.gameInfo?.startTime || null)
+    .filter(Boolean)
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => left.getTime() - right.getTime())[0] || null;
+
+  const anyStarted = roundContext.matchups.some((matchup) => getGameStatus(matchup.gameInfo, now) === "locked");
+  const locked = anyStarted || (earliestStart ? earliestStart <= now : false);
+
+  return {
+    locked,
+    earliestStartTime: earliestStart ? earliestStart.toISOString() : null,
+    reason: locked ? `Picks are locked because ${roundContext.tournamentLabel} has started.` : "",
+  };
+}
+
 function canPlayerMakeRoundPicks(player, roundContext) {
   if (!player) {
     return { allowed: false, message: "Select a player first." };
@@ -163,9 +185,14 @@ function getLegalTeamOptionsForPlayer(player, roundContext) {
   return roundContext.availableTeams.filter((team) => !usedTeamIds.has(team.id));
 }
 
-function validatePlayerRoundPicks(player, roundContext, teamIds, now = new Date()) {
+function validatePlayerRoundPicks(player, roundContext, teamIds, now = new Date(), options = {}) {
+  const { adminOverride = false } = options;
   const eligibility = canPlayerMakeRoundPicks(player, roundContext);
   if (!eligibility.allowed) return eligibility;
+  const lockStatus = getRoundLockStatus(roundContext, now);
+  if (lockStatus.locked && !adminOverride) {
+    return { allowed: false, message: lockStatus.reason };
+  }
 
   const cleanedTeamIds = Array.isArray(teamIds) ? teamIds.filter(Boolean) : [];
   if (cleanedTeamIds.length !== roundContext.requiredPicks) {
@@ -181,7 +208,7 @@ function validatePlayerRoundPicks(player, roundContext, teamIds, now = new Date(
       return { allowed: false, message: "That team is not available for this player in the current round." };
     }
     const matchup = findMatchupForTeam(roundContext, teamId);
-    if (matchup?.gameInfo && getGameStatus(matchup.gameInfo, now) === "locked") {
+    if (matchup?.gameInfo && getGameStatus(matchup.gameInfo, now) === "locked" && !adminOverride) {
       return { allowed: false, message: "Picks lock once the relevant game starts." };
     }
   }
@@ -189,9 +216,9 @@ function validatePlayerRoundPicks(player, roundContext, teamIds, now = new Date(
   return { allowed: true, message: "" };
 }
 
-function setPlayerRoundPicks(pool, playerId, roundContext, teamIds, now = new Date()) {
+function setPlayerRoundPicks(pool, playerId, roundContext, teamIds, now = new Date(), options = {}) {
   const player = pool.players.find((entry) => entry.id === playerId);
-  const validation = validatePlayerRoundPicks(player, roundContext, teamIds, now);
+  const validation = validatePlayerRoundPicks(player, roundContext, teamIds, now, options);
   if (!validation.allowed) {
     return { pool, error: validation.message };
   }
@@ -485,6 +512,7 @@ export {
   getGameStatus,
   getLegalTeamOptionsForPlayer,
   getNextRoundContext,
+  getRoundLockStatus,
   getPickStatus,
   getPlayerCurrentRoundStatuses,
   getPlayerRoundHistory,

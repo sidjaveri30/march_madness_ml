@@ -38,9 +38,9 @@ function PlayerPickList({ statuses }) {
   }
 
   return (
-    <div className="survivor-pick-status-list">
+    <div className="survivor-pick-chip-list">
       {statuses.map((status) => (
-        <div className="survivor-pick-status-row" key={status.teamId}>
+        <div className={`survivor-pick-chip survivor-pick-chip-${status.tone}`} key={status.teamId}>
           <div className="survivor-team-row">
             <span className={`survivor-pick-icon survivor-pick-icon-${status.tone}`}>{iconFor(status.code)}</span>
             <span>{status.teamName}</span>
@@ -112,12 +112,12 @@ export default function ResultsProcessorSection({
         <article className="survivor-card survivor-card-list">
           <div className="eyebrow">Active Survivors</div>
           {activePlayers.length ? (
-            <div className="survivor-player-stack">
+            <div className="survivor-player-stack survivor-dense-stack">
               {activePlayers.map((player) => {
                 const statuses = getPlayerCurrentRoundStatuses(player, currentRound, teamLookup);
                 const history = getPlayerRoundHistory(player, teamLookup);
                 return (
-                  <div className="survivor-player-status-card" key={player.id}>
+                  <div className="survivor-player-status-card survivor-player-status-card-compact" key={player.id}>
                     <div className="survivor-player-status-head">
                       <div>
                         <strong>{player.name}</strong>
@@ -139,13 +139,13 @@ export default function ResultsProcessorSection({
         <article className="survivor-card survivor-card-list">
           <div className="eyebrow">Eliminated Players</div>
           {eliminatedPlayers.length ? (
-            <div className="survivor-player-stack">
+            <div className="survivor-player-stack survivor-dense-stack">
               {eliminatedPlayers.map((player) => {
                 const history = getPlayerRoundHistory(player, teamLookup);
                 const eliminatedPickNames = (player.eliminationPickIds || []).map((teamId) => teamLookup.get(teamId) || teamId);
                 const eliminatedRoundLabel = getRoundConfig(player.eliminatedRound)?.tournamentLabel || player.eliminatedRound;
                 return (
-                  <div className="survivor-player-status-card survivor-player-status-card-eliminated" key={player.id}>
+                  <div className="survivor-player-status-card survivor-player-status-card-compact survivor-player-status-card-eliminated" key={player.id}>
                     <div className="survivor-player-status-head">
                       <div>
                         <strong>{player.name}</strong>
@@ -173,21 +173,23 @@ export default function ResultsProcessorSection({
       <article className="survivor-card survivor-card-list">
         <div className="eyebrow">Current Round Matchups</div>
         {roundContext?.matchups?.length ? (
-          <div className="survivor-games-list">
+          <div className="survivor-matchup-compact-grid">
             {roundContext.matchups.map((matchup) => (
-              <div className="survivor-dashboard-game" key={matchup.id}>
-                {matchup.resolvedTeams.map((team) => {
-                  const pickState = getPickStatus(roundContext, team.id);
-                  return (
-                    <div className="survivor-team-row" key={team.id}>
-                      <TeamLogo size="sm" team={team.name} />
-                      <span>{team.name}</span>
-                      <span className={`survivor-status-chip ${toneClass(pickState.tone)}`}>{pickState.label}</span>
-                    </div>
-                  );
-                })}
-                <div className="survivor-game-meta">
-                  <span>{matchup.label}</span>
+              <div className="survivor-matchup-compact-row" key={matchup.id}>
+                <div className="survivor-matchup-compact-teams">
+                  {matchup.resolvedTeams.map((team) => {
+                    const pickState = getPickStatus(roundContext, team.id);
+                    return (
+                      <div className="survivor-team-row" key={team.id}>
+                        <TeamLogo size="sm" team={team.name} />
+                        <span>{team.name}</span>
+                        <span className={`survivor-status-chip ${toneClass(pickState.tone)}`}>{pickState.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="survivor-matchup-compact-meta">
+                  <span className="subtle">{matchup.label}</span>
                   <WinnerSummary matchup={matchup} />
                 </div>
               </div>

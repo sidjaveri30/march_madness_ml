@@ -4,9 +4,9 @@ import TeamLogo from "../TeamLogo";
 import {
   canPlayerMakeRoundPicks,
   findMatchupForTeam,
-  getGameStatus,
   getLegalTeamOptionsForPlayer,
   getPlayerRoundPick,
+  getRoundLockStatus,
 } from "./survivorPoolUtils.js";
 
 function formatGameMeta(matchup) {
@@ -60,6 +60,7 @@ export default function PickEntrySection({
   setSelectedPlayerId,
   setSelectedTeamIds,
   pool,
+  adminMode,
 }) {
   const [query, setQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
@@ -76,6 +77,7 @@ export default function PickEntrySection({
     [roundContext],
   );
   const eligibility = roundContext ? canPlayerMakeRoundPicks(selectedPlayer, roundContext) : { allowed: false, message: "Official round data is loading." };
+  const roundLock = useMemo(() => getRoundLockStatus(roundContext, now), [now, roundContext]);
   const regionOptions = useMemo(() => {
     const regions = Array.from(new Set((roundContext?.matchups || []).map((matchup) => matchup.region).filter(Boolean)));
     return ["all", ...regions];
@@ -156,6 +158,7 @@ export default function PickEntrySection({
         ))}
       </div>
 
+      {roundLock.locked && !adminMode ? <div className="inline-error">{roundLock.reason}</div> : null}
       {!eligibility.allowed && selectedPlayer ? <div className="inline-error">{eligibility.message}</div> : null}
       {pickError ? <div className="inline-error">{pickError}</div> : null}
 
@@ -173,7 +176,7 @@ export default function PickEntrySection({
               const matchup = findMatchupForTeam(roundContext, team.id);
               const used = selectedPlayer?.usedTeamIds?.includes(team.id);
               const legal = legalTeamIds.has(team.id);
-              const locked = matchup?.gameInfo && getGameStatus(matchup.gameInfo, now) === "locked";
+              const locked = !adminMode && roundLock.locked;
               return (
                 <TeamPickButton
                   disabled={!selectedPlayer || locked || !legal}
@@ -258,8 +261,8 @@ export default function PickEntrySection({
 
       <div className="survivor-pick-footer">
         <div className="subtle">Only official March Madness teams still alive this round can be selected, and previously used teams stay blocked.</div>
-        <button className="primary-button" disabled={!selectedPlayer || !roundContext} onClick={onSubmitPicks} type="button">
-          Save Round Picks
+        <button className="primary-button" disabled={!selectedPlayer || !roundContext || (roundLock.locked && !adminMode)} onClick={onSubmitPicks} type="button">
+          {adminMode && roundLock.locked ? "Save Override Picks" : "Save Round Picks"}
         </button>
       </div>
     </section>

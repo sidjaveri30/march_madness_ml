@@ -12,6 +12,7 @@ import {
   getNextRoundContext,
   getPickStatus,
   getPlayerCurrentRoundStatuses,
+  getRoundLockStatus,
   processRoundResults,
   resetPoolProgress,
   rollbackPoolToRound,
@@ -106,6 +107,46 @@ describe("survivorPoolUtils", () => {
     ).toMatch(/not available/i);
   });
 
+  it("locks the round when the earliest game start time has passed", () => {
+    const state = createBracketState(bracketDefinition);
+    const matchups = getAllMatchups(bracketDefinition).filter((matchup) => matchup.round === "firstRound");
+    const games = Object.fromEntries(
+      matchups.map((matchup, index) => [
+        matchup.id,
+        {
+          matchupId: matchup.id,
+          status: "upcoming",
+          startTime: index === 0 ? "2000-03-20T12:00:00Z" : "2099-03-20T12:00:00Z",
+        },
+      ]),
+    );
+    const roundContext = buildRoundContext(bracketDefinition, state, games, "firstRound");
+
+    const lockStatus = getRoundLockStatus(roundContext, new Date("2026-03-16T12:00:00Z"));
+
+    expect(lockStatus.locked).toBe(true);
+    expect(lockStatus.reason).toMatch(/locked/i);
+  });
+
+  it("admin override allows editing after the round lock while normal mode blocks it", () => {
+    const state = createBracketState(bracketDefinition);
+    const roundContext = buildRoundContext(
+      bracketDefinition,
+      state,
+      buildLiveGames("firstRound", "upcoming"),
+      "firstRound",
+    );
+    roundContext.matchups[0].gameInfo.startTime = "2000-03-20T12:00:00Z";
+    const player = createPlayer({ id: "sid", name: "Sid" });
+    const teamIds = roundContext.availableTeamIds.slice(0, 3);
+
+    const blocked = validatePlayerRoundPicks(player, roundContext, teamIds, new Date("2026-03-16T12:00:00Z"));
+    const allowed = validatePlayerRoundPicks(player, roundContext, teamIds, new Date("2026-03-16T12:00:00Z"), { adminOverride: true });
+
+    expect(blocked.allowed).toBe(false);
+    expect(allowed.allowed).toBe(true);
+  });
+
   it("reset current picks clears only the selected player's current round", () => {
     const roundContext = buildRoundContext(bracketDefinition, createBracketState(bracketDefinition), {}, "firstRound");
     const pool = createPool({
@@ -175,6 +216,20 @@ describe("survivorPoolUtils", () => {
     expect(nextPool.players[0].picks).toHaveLength(2);
     expect(nextPool.players[0].usedTeamIds).toEqual([]);
     expect(nextPool.players[0].eliminated).toBe(false);
+  });
+
+  it("admin override edits persist into the same underlying pool state", () => {
+    const roundContext = buildRoundContext(bracketDefinition, createBracketState(bracketDefinition), {}, "firstRound");
+    roundContext.matchups[0].gameInfo = { startTime: "2000-03-20T12:00:00Z", status: "upcoming" };
+    const pool = createPool({
+      players: [createPlayer({ id: "sid", name: "Sid" })],
+    });
+    const teamIds = roundContext.availableTeamIds.slice(0, 3);
+
+    const result = setPlayerRoundPicks(pool, "sid", roundContext, teamIds, new Date("2026-03-16T12:00:00Z"), { adminOverride: true });
+
+    expect(result.error).toBe("");
+    expect(result.pool.players[0].picks[0].teamIds).toEqual(teamIds);
   });
 
   it("eliminates players when any selected team loses and records why", () => {
