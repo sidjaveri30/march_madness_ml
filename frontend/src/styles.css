@@ -1481,6 +1481,12 @@ td:last-child {
   background: var(--surface-soft);
 }
 
+.survivor-pick-team-logo.team-logo-sm,
+.survivor-pick-team-logo.team-logo-fallback.team-logo-sm {
+  width: 20px;
+  height: 20px;
+}
+
 .survivor-pick-chip-success {
   border-color: rgba(21, 128, 61, 0.18);
 }

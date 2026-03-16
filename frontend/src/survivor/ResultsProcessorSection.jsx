@@ -42,7 +42,7 @@ function PlayerPickList({ statuses }) {
       {statuses.map((status) => (
         <div className={`survivor-pick-chip survivor-pick-chip-${status.tone}`} key={status.teamId}>
           <div className="survivor-team-row">
-            <span className={`survivor-pick-icon survivor-pick-icon-${status.tone}`}>{iconFor(status.code)}</span>
+            <TeamLogo className="survivor-pick-team-logo" size="sm" team={status.teamName} />
             <span>{status.teamName}</span>
           </div>
           <span className={`survivor-status-chip ${toneClass(status.tone)}`}>{status.label}</span>
