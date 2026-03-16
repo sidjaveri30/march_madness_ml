@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import MarketContextSection from "../MarketContextSection";
 import TeamLogo from "../TeamLogo";
+import { fetchJson } from "../apiClient";
 import { getTeamName, isPickableTeam, isPlaceholderTeam, sameTeam } from "./bracketTeams";
 
 function formatPercent(value) {
@@ -41,11 +42,9 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
       setOddsState({ data: null, loading: true, error: "" });
       try {
         const params = new URLSearchParams({ team_a: teamAName, team_b: teamBName });
-        const response = await fetch(`${API_URL}/odds?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error("Could not load market context.");
-        }
-        const payload = await response.json();
+        const payload = await fetchJson(`${API_URL}/odds?${params.toString()}`, {
+          errorMessage: "Could not load market context.",
+        });
         if (!cancelled) setOddsState({ data: payload, loading: false, error: "" });
       } catch (error) {
         if (!cancelled) setOddsState({ data: null, loading: false, error: error.message });

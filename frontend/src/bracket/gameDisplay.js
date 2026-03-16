@@ -28,18 +28,46 @@ function compactStatusLabel(game) {
   if (!game) return "";
   if (game.status === "live") return "LIVE";
   if (game.status === "final") return "FINAL";
-  if (game.status === "upcoming") return "UPCOMING";
+  if (game.status === "upcoming") return "TIP";
   return compactWhitespace(game.statusLabel || game.status || "");
 }
 
 function compactStatusDetail(game) {
   if (!game) return "";
-  if (game.status === "live") return compactLiveDetail(game.statusLabel);
+  if (game.status === "live") return compactLiveDetail(game.detail || game.statusLabel);
   if (game.status === "final") return "";
   if (game.status === "upcoming") {
     return formatCommenceTime(game.commenceTime || game.startTime || game.statusLabel);
   }
   return compactWhitespace(game.statusLabel);
+}
+
+function getMatchupHeaderMeta(matchup, game) {
+  if (!game) {
+    return {
+      label: matchup.label,
+      detail: matchup.sublabel || "",
+    };
+  }
+
+  if (game.status === "live") {
+    return {
+      label: "LIVE",
+      detail: compactStatusDetail(game),
+    };
+  }
+
+  if (game.status === "final") {
+    return {
+      label: "FINAL",
+      detail: "",
+    };
+  }
+
+  return {
+    label: matchup.label,
+    detail: compactStatusDetail(game),
+  };
 }
 
 function getDisplayGameInfo(game) {
@@ -49,8 +77,8 @@ function getDisplayGameInfo(game) {
     ...game,
     displayStatusLabel: compactStatusLabel(game),
     displayStatusDetail: compactStatusDetail(game),
-    team_a_score: game.team_a_score ?? game.teamAScore ?? null,
-    team_b_score: game.team_b_score ?? game.teamBScore ?? null,
+    team_a_score: game.team_a_score ?? game.teamAScore ?? game.scoreA ?? null,
+    team_b_score: game.team_b_score ?? game.teamBScore ?? game.scoreB ?? null,
   };
 }
 
@@ -60,4 +88,5 @@ export {
   compactWhitespace,
   formatCommenceTime,
   getDisplayGameInfo,
+  getMatchupHeaderMeta,
 };

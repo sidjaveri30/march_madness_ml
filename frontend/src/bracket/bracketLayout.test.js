@@ -49,4 +49,27 @@ describe("bracketLayout", () => {
     expect(sampleConnector.from.y).toBe(sourceCard.centerY);
     expect(sampleConnector.to.y).toBe(targetCard.centerY);
   });
+
+  it("gives the Final Four and Championship dedicated center widths", () => {
+    const layout = computeBracketLayout(bracketDefinition);
+    const semifinalLeft = layout.cards.find((card) => card.matchup.id === "final_four_1");
+    const semifinalRight = layout.cards.find((card) => card.matchup.id === "final_four_2");
+    const championship = layout.cards.find((card) => card.matchup.id === "championship");
+
+    expect(semifinalLeft.width).toBe(BRACKET_LAYOUT.FINAL_FOUR_CARD_WIDTH);
+    expect(semifinalRight.width).toBe(BRACKET_LAYOUT.FINAL_FOUR_CARD_WIDTH);
+    expect(championship.width).toBe(BRACKET_LAYOUT.CHAMPIONSHIP_CARD_WIDTH);
+    expect(championship.width).toBeGreaterThan(BRACKET_LAYOUT.ROUND_COLUMN_WIDTH);
+    expect(championship.y).toBeGreaterThan(semifinalLeft.y);
+  });
+
+  it("keeps center connectors aligned to widened card bounds", () => {
+    const layout = computeBracketLayout(bracketDefinition);
+    const connector = layout.connectors.find((entry) => entry.id === "final_four_1__championship");
+    const semifinal = layout.cards.find((card) => card.matchup.id === "final_four_1");
+    const championship = layout.cards.find((card) => card.matchup.id === "championship");
+
+    expect(connector.from.x).toBe(semifinal.x + semifinal.width);
+    expect(connector.to.x).toBe(championship.x);
+  });
 });

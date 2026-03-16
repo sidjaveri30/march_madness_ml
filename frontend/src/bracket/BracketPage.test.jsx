@@ -116,6 +116,18 @@ describe("BracketPage", () => {
     expect(screen.getByText("Championship")).toBeInTheDocument();
   });
 
+  it("keeps both semifinal teams and championship teams visible in the center bracket", () => {
+    render(<BracketPage />);
+
+    const semifinalOne = screen.getByTestId("matchup-final_four_1");
+    const semifinalTwo = screen.getByTestId("matchup-final_four_2");
+    const championship = screen.getByTestId("matchup-championship");
+
+    expect(within(semifinalOne).getAllByRole("button")).toHaveLength(3);
+    expect(within(semifinalTwo).getAllByRole("button")).toHaveLength(3);
+    expect(within(championship).getAllByRole("button")).toHaveLength(3);
+  });
+
   it("shows first four placeholders in the main bracket and keeps them selectable", () => {
     render(<BracketPage />);
 

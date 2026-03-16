@@ -6,6 +6,7 @@ from src.utils.odds_math import (
     american_to_implied_probability,
     build_market_interpretation,
     categorize_probability_edge,
+    describe_spread_difference,
     no_vig_two_way_probabilities,
     spread_interpretation,
 )
@@ -32,6 +33,10 @@ class OddsMathTests(unittest.TestCase):
         self.assertIn(
             "Moderate",
             build_market_interpretation("Moderate edge", "Duke", "Spread looks close to fair."),
+        )
+        self.assertEqual(
+            describe_spread_difference(7.8, -4.5, "Duke", "Vanderbilt"),
+            "Model projects Duke 12.3 points stronger than the market spread.",
         )
 
 

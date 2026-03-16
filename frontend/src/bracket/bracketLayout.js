@@ -2,6 +2,10 @@ const BRACKET_LAYOUT = {
   ROUND_COLUMN_WIDTH: 156,
   ROUND_COLUMN_GAP: 28,
   CARD_HEIGHT: 92,
+  FINAL_FOUR_CARD_WIDTH: 188,
+  FINAL_FOUR_CARD_HEIGHT: 96,
+  CHAMPIONSHIP_CARD_WIDTH: 212,
+  CHAMPIONSHIP_CARD_HEIGHT: 100,
   MATCHUP_META_HEIGHT: 18,
   MATCHUP_CARD_PADDING: 6,
   TEAM_ROW_HEIGHT: 24,
@@ -11,14 +15,15 @@ const BRACKET_LAYOUT = {
   REGION_VERTICAL_OFFSET: 78,
   REGION_SECTION_GAP: 108,
   CONNECTOR_LENGTH: 18,
-  CENTER_COLUMN_WIDTH: 360,
+  CENTER_COLUMN_WIDTH: 468,
   CENTER_GAP: 44,
   ROUND_HEADER_HEIGHT: 22,
   REGION_LABEL_HEIGHT: 20,
   BOARD_PADDING_X: 20,
   BOARD_PADDING_Y: 18,
-  CHAMPIONSHIP_OFFSET_Y: 116,
-  SEMIFINAL_CARD_GAP: 24,
+  CENTER_VERTICAL_GAP: 28,
+  CENTER_CONNECTOR_SPAN: 30,
+  SEMIFINAL_CARD_GAP: 28,
 };
 
 const REGION_ROUNDS = ["firstRound", "secondRound", "sweet16", "elite8"];
@@ -54,9 +59,9 @@ const RIGHT_COLUMN_POSITIONS = {
   firstRound: RIGHT_BLOCK_X + (BRACKET_LAYOUT.ROUND_COLUMN_WIDTH + BRACKET_LAYOUT.ROUND_COLUMN_GAP) * 3,
 };
 
-const CENTER_MATCHUP_X = CENTER_COLUMN_X + (BRACKET_LAYOUT.CENTER_COLUMN_WIDTH - BRACKET_LAYOUT.ROUND_COLUMN_WIDTH) / 2;
+const CENTER_MATCHUP_X = CENTER_COLUMN_X + (BRACKET_LAYOUT.CENTER_COLUMN_WIDTH - BRACKET_LAYOUT.CHAMPIONSHIP_CARD_WIDTH) / 2;
 const FINAL_FOUR_LEFT_X = CENTER_COLUMN_X;
-const FINAL_FOUR_RIGHT_X = CENTER_COLUMN_X + BRACKET_LAYOUT.CENTER_COLUMN_WIDTH - BRACKET_LAYOUT.ROUND_COLUMN_WIDTH;
+const FINAL_FOUR_RIGHT_X = FINAL_FOUR_LEFT_X + BRACKET_LAYOUT.FINAL_FOUR_CARD_WIDTH + BRACKET_LAYOUT.SEMIFINAL_CARD_GAP;
 
 function getRoundColumnX(side, roundKey) {
   return side === "left" ? LEFT_COLUMN_POSITIONS[roundKey] : RIGHT_COLUMN_POSITIONS[roundKey];
@@ -109,6 +114,7 @@ function buildRegionLayout(definition, region, side) {
         region,
         x: getRoundColumnX(side, roundKey),
         width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
+        height: BRACKET_LAYOUT.CARD_HEIGHT,
         y: centerY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
         centerY,
       });
@@ -122,8 +128,13 @@ function computeBracketLayout(definition) {
   const regionCards = REGION_ORDER.flatMap((region) => buildRegionLayout(definition, region, REGION_SIDE[region]));
   const cardLookup = Object.fromEntries(regionCards.map((card) => [card.matchup.id, card]));
 
-  const semifinalCenterY = (cardLookup.east_e8.centerY + cardLookup.south_e8.centerY) / 2;
-  const championshipCenterY = semifinalCenterY + BRACKET_LAYOUT.CHAMPIONSHIP_OFFSET_Y;
+  const leftSemifinalCenterY = (cardLookup.east_e8.centerY + cardLookup.south_e8.centerY) / 2;
+  const rightSemifinalCenterY = (cardLookup.west_e8.centerY + cardLookup.midwest_e8.centerY) / 2;
+  const championshipCenterY =
+    Math.max(leftSemifinalCenterY, rightSemifinalCenterY) +
+    BRACKET_LAYOUT.FINAL_FOUR_CARD_HEIGHT / 2 +
+    BRACKET_LAYOUT.CENTER_VERTICAL_GAP +
+    BRACKET_LAYOUT.CHAMPIONSHIP_CARD_HEIGHT / 2;
 
   const centerCards = [
     {
@@ -132,9 +143,10 @@ function computeBracketLayout(definition) {
       side: "center-left",
       region: "Final Four",
       x: FINAL_FOUR_LEFT_X,
-      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
-      y: semifinalCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
-      centerY: semifinalCenterY,
+      width: BRACKET_LAYOUT.FINAL_FOUR_CARD_WIDTH,
+      height: BRACKET_LAYOUT.FINAL_FOUR_CARD_HEIGHT,
+      y: leftSemifinalCenterY - BRACKET_LAYOUT.FINAL_FOUR_CARD_HEIGHT / 2,
+      centerY: leftSemifinalCenterY,
     },
     {
       matchup: definition.finalRounds.finalFour[1],
@@ -142,9 +154,10 @@ function computeBracketLayout(definition) {
       side: "center-right",
       region: "Final Four",
       x: FINAL_FOUR_RIGHT_X,
-      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
-      y: semifinalCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
-      centerY: semifinalCenterY,
+      width: BRACKET_LAYOUT.FINAL_FOUR_CARD_WIDTH,
+      height: BRACKET_LAYOUT.FINAL_FOUR_CARD_HEIGHT,
+      y: rightSemifinalCenterY - BRACKET_LAYOUT.FINAL_FOUR_CARD_HEIGHT / 2,
+      centerY: rightSemifinalCenterY,
     },
     {
       matchup: definition.finalRounds.championship[0],
@@ -152,8 +165,9 @@ function computeBracketLayout(definition) {
       side: "center",
       region: "Championship",
       x: CENTER_MATCHUP_X,
-      width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH,
-      y: championshipCenterY - BRACKET_LAYOUT.CARD_HEIGHT / 2,
+      width: BRACKET_LAYOUT.CHAMPIONSHIP_CARD_WIDTH,
+      height: BRACKET_LAYOUT.CHAMPIONSHIP_CARD_HEIGHT,
+      y: championshipCenterY - BRACKET_LAYOUT.CHAMPIONSHIP_CARD_HEIGHT / 2,
       centerY: championshipCenterY,
     },
   ];
@@ -178,13 +192,13 @@ function computeBracketLayout(definition) {
 
       const from =
         feederDirection === "right"
-          ? { x: feeder.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, y: feeder.centerY }
+          ? { x: feeder.x + feeder.width, y: feeder.centerY }
           : { x: feeder.x, y: feeder.centerY };
 
       const to =
         targetDirection === "left"
           ? { x: card.x, y: card.centerY }
-          : { x: card.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, y: card.centerY };
+          : { x: card.x + card.width, y: card.centerY };
 
       connectors.push({
         id: `${slot.source.matchupId}__${card.matchup.id}`,
@@ -201,7 +215,7 @@ function computeBracketLayout(definition) {
     { key: "left-sweet16", label: "Sweet 16", x: LEFT_COLUMN_POSITIONS.sweet16, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
     { key: "left-elite8", label: "Elite 8", x: LEFT_COLUMN_POSITIONS.elite8, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
     { key: "center-final-four", label: "Final Four", x: CENTER_COLUMN_X, width: BRACKET_LAYOUT.CENTER_COLUMN_WIDTH, top: 0 },
-    { key: "center-championship", label: "Championship", x: CENTER_MATCHUP_X, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 20 },
+    { key: "center-championship", label: "Championship", x: CENTER_MATCHUP_X, width: BRACKET_LAYOUT.CHAMPIONSHIP_CARD_WIDTH, top: 20 },
     { key: "right-elite8", label: "Elite 8", x: RIGHT_COLUMN_POSITIONS.elite8, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
     { key: "right-sweet16", label: "Sweet 16", x: RIGHT_COLUMN_POSITIONS.sweet16, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
     { key: "right-secondRound", label: "Second Round", x: RIGHT_COLUMN_POSITIONS.secondRound, width: BRACKET_LAYOUT.ROUND_COLUMN_WIDTH, top: 0 },
@@ -242,7 +256,7 @@ function computeBracketLayout(definition) {
       columns: columnGuides,
       points: allCards.map((card) => ({
         key: `point-${card.matchup.id}`,
-        x: card.x + BRACKET_LAYOUT.ROUND_COLUMN_WIDTH / 2,
+        x: card.x + card.width / 2,
         y: card.centerY,
       })),
       anchors: connectors.flatMap((connector) => [

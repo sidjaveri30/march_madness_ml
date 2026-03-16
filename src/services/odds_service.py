@@ -8,8 +8,10 @@ from src.data_sources.odds_provider import OddsProvider
 from src.models.predictor import MatchupPredictor, PredictionResult
 from src.utils.odds_math import (
     average_number,
+    average_moneyline,
     build_market_interpretation,
     categorize_probability_edge,
+    describe_spread_difference,
     no_vig_two_way_probabilities,
     spread_interpretation,
 )
@@ -148,13 +150,15 @@ class OddsService:
         team_b_probs = [book["moneyline"]["team_b_implied_prob"] for book in bookmakers if book.get("moneyline")]
         spreads = [book["spread"]["team_a_line"] for book in bookmakers if book.get("spread")]
         totals = [book["total"]["points"] for book in bookmakers if book.get("total")]
+        last_updated = max((book["last_update"] for book in bookmakers if book.get("last_update")), default=None)
         return {
-            "team_a_moneyline_avg": average_number(moneyline_a_prices),
-            "team_b_moneyline_avg": average_number(moneyline_b_prices),
+            "team_a_moneyline_avg": average_moneyline(moneyline_a_prices),
+            "team_b_moneyline_avg": average_moneyline(moneyline_b_prices),
             "team_a_implied_prob_avg": average_number(team_a_probs),
             "team_b_implied_prob_avg": average_number(team_b_probs),
             "spread_avg": average_number(spreads),
             "total_avg": average_number(totals),
+            "last_updated": last_updated,
         }
 
     def _model_vs_market(self, prediction: PredictionResult, consensus: dict[str, Any], team_a: str, team_b: str) -> dict[str, Any]:
@@ -166,14 +170,19 @@ class OddsService:
         if moneyline_edge is not None and abs(moneyline_edge) >= 0.02:
             edge_team = team_a if moneyline_edge > 0 else team_b
         spread_summary = spread_interpretation(prediction.predicted_margin, consensus.get("spread_avg"), team_a, team_b)
+        spread_difference_summary = describe_spread_difference(prediction.predicted_margin, consensus.get("spread_avg"), team_a, team_b)
         return {
             "model_win_prob_team_a": prediction.win_probability_team_a,
             "market_implied_prob_team_a": market_prob,
             "moneyline_edge_team_a": moneyline_edge,
+            "moneyline_edge_points": None if moneyline_edge is None else moneyline_edge * 100,
             "model_margin_team_a": prediction.predicted_margin,
             "market_spread_team_a": consensus.get("spread_avg"),
             "spread_edge_team_a": spread_edge,
+            "spread_edge_points": spread_edge,
             "edge_label": edge_label,
+            "spread_summary": spread_summary,
+            "spread_difference_summary": spread_difference_summary,
             "interpretation": build_market_interpretation(edge_label, edge_team, spread_summary),
         }
 
@@ -191,6 +200,8 @@ class OddsService:
                 "bookmakers": [],
                 "consensus": {},
                 "model_vs_market": None,
+                "available_bookmakers": [],
+                "last_updated": None,
                 "message": "Market lines are unavailable for unresolved play-in placeholders.",
             }
 
@@ -204,6 +215,8 @@ class OddsService:
                 "bookmakers": [],
                 "consensus": {},
                 "model_vs_market": None,
+                "available_bookmakers": [],
+                "last_updated": None,
                 "message": "No market lines currently available for this matchup.",
             }
 
@@ -218,7 +231,9 @@ class OddsService:
             "event_id": event.get("id"),
             "commence_time": event.get("commence_time"),
             "bookmakers": bookmakers,
+            "available_bookmakers": [book.get("title") for book in bookmakers if book.get("title")],
             "consensus": consensus,
+            "last_updated": consensus.get("last_updated"),
             "model_vs_market": self._model_vs_market(prediction, consensus, team_a, team_b),
             "message": None,
         }

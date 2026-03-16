@@ -52,17 +52,25 @@ export default function LiveBracketPage() {
             <span className="metric-label">Official Leader</span>
             <strong>{champion || "TBD"}</strong>
           </div>
-          <button
-            className="secondary-button"
-            disabled={!liveFeed.canAdvance}
-            onClick={() => liveFeed.next()}
-            type="button"
-          >
-            Next Mock Update
-          </button>
-          <button className="secondary-button" onClick={() => liveFeed.reset()} type="button">
-            Reset Feed
-          </button>
+          {liveFeed.mode === "mock" ? (
+            <>
+              <button
+                className="secondary-button"
+                disabled={!liveFeed.canAdvance}
+                onClick={() => liveFeed.next()}
+                type="button"
+              >
+                Next Mock Update
+              </button>
+              <button className="secondary-button" onClick={() => liveFeed.reset()} type="button">
+                Reset Feed
+              </button>
+            </>
+          ) : (
+            <button className="secondary-button" onClick={() => liveFeed.refresh()} type="button">
+              Refresh Now
+            </button>
+          )}
         </div>
       </section>
 
@@ -70,7 +78,7 @@ export default function LiveBracketPage() {
 
       <section className="live-bracket-summary">
         <div className="eyebrow">Feed Window</div>
-        <strong>{liveState?.label || "Loading live feed..."}</strong>
+        <strong>{liveState?.label || (liveFeed.loading ? "Loading live feed..." : "Live feed unavailable")}</strong>
         <span className="subtle">{liveState?.meta.helperText || "Loading official bracket feed."}</span>
         {liveState?.meta ? (
           <div className="live-feed-meta">

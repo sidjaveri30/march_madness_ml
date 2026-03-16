@@ -49,9 +49,9 @@ class OddsProvider:
         }
         try:
             response = requests.get(
-                "https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds",
+                f"{settings.odds_api_base_url}/sports/basketball_ncaab/odds",
                 params=params,
-                timeout=20,
+                timeout=settings.odds_request_timeout_seconds,
             )
             response.raise_for_status()
             payload = response.json()

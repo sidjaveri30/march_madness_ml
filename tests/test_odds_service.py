@@ -89,6 +89,8 @@ class OddsServiceTests(unittest.TestCase):
         self.assertEqual(payload["bookmakers"][0]["title"], "DraftKings")
         self.assertEqual(payload["bookmakers"][1]["title"], "FanDuel")
         self.assertIsNotNone(payload["consensus"]["team_a_implied_prob_avg"])
+        self.assertEqual(payload["available_bookmakers"], ["DraftKings", "FanDuel"])
+        self.assertEqual(payload["last_updated"], "2026-03-15T12:05:00Z")
         self.assertIn("interpretation", payload["model_vs_market"])
 
     def test_service_matches_team_names_robustly(self):

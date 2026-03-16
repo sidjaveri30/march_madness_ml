@@ -90,7 +90,7 @@ export default function BracketBoard({
           onDetails={() => onDetails(card.matchup)}
           onPick={(winner) => onPick(card.matchup.id, winner)}
           side={card.side}
-          style={{ left: card.x, top: card.y, width: card.width || undefined }}
+          style={{ left: card.x, top: card.y, width: card.width || undefined, height: card.height || undefined }}
           teams={getTeams(card.matchup.id)}
           winner={getWinner(card.matchup.id)}
         />

@@ -2,6 +2,10 @@ function formatPercent(value) {
   return typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—";
 }
 
+function formatPercentPoints(value) {
+  return typeof value === "number" ? `${value >= 0 ? "+" : ""}${value.toFixed(1)} pts` : "—";
+}
+
 function formatAmerican(price) {
   if (price === null || price === undefined) return "—";
   const number = Number(price);
@@ -16,6 +20,18 @@ function formatLine(value) {
 
 function formatNumber(value) {
   return typeof value === "number" ? value.toFixed(1) : "—";
+}
+
+function formatTimestamp(value) {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 export default function MarketContextSection({ loading = false, error = "", odds = null }) {
@@ -36,6 +52,7 @@ export default function MarketContextSection({ loading = false, error = "", odds
     <div className="market-context-grid">
       <section className="modal-panel">
         <div className="eyebrow">Market Odds</div>
+        {odds.last_updated ? <div className="market-updated">Last updated {formatTimestamp(odds.last_updated)}</div> : null}
         <div className="market-book-list">
           {odds.bookmakers.map((book) => (
             <div className="market-book-row" key={book.key}>
@@ -74,19 +91,19 @@ export default function MarketContextSection({ loading = false, error = "", odds
         {odds.model_vs_market ? (
           <div className="market-summary">
             <div className="market-summary-row">
-              <span>Model win probability</span>
+              <span>{odds.team_a} model win probability</span>
               <strong>{formatPercent(odds.model_vs_market.model_win_prob_team_a)}</strong>
             </div>
             <div className="market-summary-row">
-              <span>Market implied probability</span>
+              <span>{odds.team_a} market implied probability</span>
               <strong>{formatPercent(odds.model_vs_market.market_implied_prob_team_a)}</strong>
             </div>
             <div className="market-summary-row">
               <span>Probability edge</span>
-              <strong>{formatPercent(odds.model_vs_market.moneyline_edge_team_a)}</strong>
+              <strong>{formatPercentPoints(odds.model_vs_market.moneyline_edge_points)}</strong>
             </div>
             <div className="market-summary-row">
-              <span>Model margin</span>
+              <span>Model projected margin</span>
               <strong>{formatNumber(odds.model_vs_market.model_margin_team_a)}</strong>
             </div>
             <div className="market-summary-row">
@@ -94,10 +111,12 @@ export default function MarketContextSection({ loading = false, error = "", odds
               <strong>{formatLine(odds.model_vs_market.market_spread_team_a)}</strong>
             </div>
             <div className="market-summary-row">
-              <span>Margin vs spread</span>
-              <strong>{formatNumber(odds.model_vs_market.spread_edge_team_a)}</strong>
+              <span>Spread difference</span>
+              <strong>{formatNumber(odds.model_vs_market.spread_edge_points)}</strong>
             </div>
             <div className="market-badge">{odds.model_vs_market.edge_label}</div>
+            {odds.model_vs_market.spread_summary ? <p className="subtle market-interpretation">{odds.model_vs_market.spread_summary}</p> : null}
+            {odds.model_vs_market.spread_difference_summary ? <p className="subtle market-interpretation">{odds.model_vs_market.spread_difference_summary}</p> : null}
             <p className="subtle market-interpretation">{odds.model_vs_market.interpretation}</p>
           </div>
         ) : (

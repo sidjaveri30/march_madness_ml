@@ -3,12 +3,13 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.schemas import MessageResponse, OddsQueryResponse, PredictRequest, PredictResponse
+from src.api.schemas import LiveScoreboardResponse, MessageResponse, OddsQueryResponse, PredictRequest, PredictResponse
 from src.config.settings import settings
 from src.models.predictor import MatchupPredictor
+from src.services.live_bracket_service import get_live_scoreboard
 from src.services.odds_service import OddsService
 from src.utils.logging import get_logger
 
@@ -105,6 +106,11 @@ def odds(team_a: str, team_b: str) -> OddsQueryResponse:
         except ValueError:
             prediction = None
     return OddsQueryResponse(**service.get_matchup_odds(team_a, team_b, prediction=prediction))
+
+
+@app.get("/live-scoreboard", response_model=LiveScoreboardResponse)
+def live_scoreboard(provider: str | None = Query(default=None)) -> LiveScoreboardResponse:
+    return LiveScoreboardResponse(**get_live_scoreboard(mode=provider))
 
 
 @app.post("/refresh-data", response_model=MessageResponse)

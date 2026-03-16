@@ -1,19 +1,20 @@
 import TeamSlot from "./TeamSlot";
 import { isPickableTeam, sameTeam } from "./bracketTeams";
-import { getDisplayGameInfo } from "./gameDisplay";
+import { getDisplayGameInfo, getMatchupHeaderMeta } from "./gameDisplay";
 
 export default function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = null, interactive = true, gameInfo = null }) {
   const [teamA, teamB] = teams;
   const canPickA = isPickableTeam(teamA);
   const canPickB = isPickableTeam(teamB);
   const displayGame = getDisplayGameInfo(gameInfo);
+  const headerMeta = getMatchupHeaderMeta(matchup, displayGame);
 
   return (
     <article className={`matchup-card matchup-card-${side}`} data-testid={`matchup-${matchup.id}`} style={style}>
       <div className="matchup-card-header">
         <div className="matchup-meta">
-          <div className="matchup-label">{matchup.label}</div>
-          {matchup.sublabel ? <div className="matchup-sublabel">{matchup.sublabel}</div> : null}
+          <div className="matchup-label">{headerMeta.label}</div>
+          {headerMeta.detail ? <div className="matchup-sublabel">{headerMeta.detail}</div> : null}
         </div>
         <button
           aria-label={`View ${matchup.label} details`}
@@ -25,13 +26,6 @@ export default function MatchupCard({ matchup, teams, winner, onPick, onDetails,
           i
         </button>
       </div>
-
-      {displayGame ? (
-        <div className="matchup-status-row">
-          <span className={`matchup-status-pill matchup-status-pill-${displayGame.status}`}>{displayGame.displayStatusLabel}</span>
-          {displayGame.displayStatusDetail ? <span className="matchup-status-detail">{displayGame.displayStatusDetail}</span> : null}
-        </div>
-      ) : null}
 
       <div className="matchup-teams">
         <TeamSlot

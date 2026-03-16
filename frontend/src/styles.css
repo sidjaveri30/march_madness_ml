@@ -483,6 +483,12 @@ h2 {
   overflow: hidden;
 }
 
+.matchup-card-center-left,
+.matchup-card-center-right,
+.matchup-card-center {
+  padding: 8px;
+}
+
 .matchup-card-left::after,
 .matchup-card-right::after,
 .matchup-card-center-left::after,
@@ -495,18 +501,26 @@ h2 {
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   align-items: center;
+  min-height: 28px;
 }
 
 .matchup-meta {
   min-width: 0;
 }
 
+.matchup-label {
+  font-weight: 800;
+}
+
 .matchup-sublabel {
   color: var(--text-muted);
   font-size: 0.62rem;
   line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .matchup-teams {
@@ -748,6 +762,7 @@ h2 {
   border-radius: 12px;
   background: var(--surface-soft);
   padding: 10px;
+  min-height: 106px;
 }
 
 .ticker-status {
@@ -780,6 +795,14 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.schedule-game-round {
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .schedule-section-toggle {
@@ -974,6 +997,12 @@ h2 {
   border: 1px solid #e1e5ea;
   display: grid;
   gap: 8px;
+}
+
+.market-updated {
+  margin: 4px 0 10px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
 }
 
 .market-book-head,

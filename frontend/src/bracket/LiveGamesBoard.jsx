@@ -7,6 +7,7 @@ const DEFAULT_VISIBLE_COUNT = 2;
 
 function ScheduleGame({ game }) {
   const displayGame = getDisplayGameInfo(game);
+  const roundInfo = displayGame.roundLabel || displayGame.region || "";
 
   return (
     <article className={`ticker-card ticker-card-${displayGame.status}`}>
@@ -14,6 +15,7 @@ function ScheduleGame({ game }) {
         <span className="matchup-status-pill matchup-status-pill-inline">{displayGame.displayStatusLabel}</span>
         {displayGame.displayStatusDetail ? <span className="schedule-game-detail">{displayGame.displayStatusDetail}</span> : null}
       </div>
+      {roundInfo ? <div className="schedule-game-round">{roundInfo}</div> : null}
       <div className="ticker-team-row">
         <TeamLogo size="sm" team={displayGame.teamA} />
         <span>{displayGame.teamA}</span>

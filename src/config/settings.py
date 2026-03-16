@@ -32,10 +32,18 @@ class Settings(BaseSettings):
         alias="FRONTEND_API_URL",
     )
     odds_api_key: str = Field(default="", alias="ODDS_API_KEY")
+    odds_api_base_url: str = Field(default="https://api.the-odds-api.com/v4", alias="ODDS_API_BASE_URL")
     odds_region: str = Field(default="us", alias="ODDS_REGION")
     odds_bookmakers: str = Field(default="draftkings,fanduel", alias="ODDS_BOOKMAKERS")
     odds_markets: str = Field(default="h2h,spreads,totals", alias="ODDS_MARKETS")
     odds_cache_ttl_minutes: int = Field(default=20, alias="ODDS_CACHE_TTL_MINUTES")
+    odds_request_timeout_seconds: int = Field(default=10, alias="ODDS_REQUEST_TIMEOUT_SECONDS")
+    live_provider: str = Field(default="espn", alias="LIVE_PROVIDER")
+    live_request_timeout_seconds: int = Field(default=8, alias="LIVE_REQUEST_TIMEOUT_SECONDS")
+    espn_scoreboard_url: str = Field(
+        default="https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard",
+        alias="ESPN_SCOREBOARD_URL",
+    )
 
     @property
     def raw_data_dir(self) -> Path:

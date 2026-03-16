@@ -51,8 +51,10 @@ describe("MarketContextSection", () => {
 
     expect(screen.getByText("DraftKings")).toBeInTheDocument();
     expect(screen.getByText("FanDuel")).toBeInTheDocument();
+    expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
     expect(screen.getByText(/Duke -180/)).toBeInTheDocument();
     expect(screen.getByText(/Vanderbilt \+150/)).toBeInTheDocument();
+    expect(screen.getByText("Moderate edge")).toBeInTheDocument();
   });
 
   it("shows fallback copy when no odds are available", () => {
