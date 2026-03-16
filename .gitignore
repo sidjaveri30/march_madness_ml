@@ -1,0 +1,50 @@
+# Secrets
+.env
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+
+# Virtual environments
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.egg-info/
+.eggs/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+
+# Coverage / logs
+coverage/
+*.log
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Data
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/cache/*
+!data/cache/.gitkeep
+data/external/*
+!data/external/.gitkeep
+
+# Model outputs
+models_artifacts/
