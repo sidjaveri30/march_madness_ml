@@ -1,5 +1,7 @@
+import { fetchJson } from "../apiClient.js";
+
 async function fetchMatchupPrediction(apiUrl, teamA, teamB, options = {}) {
-  const response = await fetch(`${apiUrl}/predict`, {
+  return fetchJson(`${apiUrl}/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -7,14 +9,8 @@ async function fetchMatchupPrediction(apiUrl, teamA, teamB, options = {}) {
       team_b: teamB,
       neutral_site: options.neutralSite ?? true,
     }),
+    errorMessage: "Prediction unavailable",
   });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail || "Prediction unavailable");
-  }
-
-  return response.json();
 }
 
 function createPredictionKey(teams) {

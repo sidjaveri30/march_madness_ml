@@ -8,9 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.schemas import MessageResponse, OddsQueryResponse, PredictRequest, PredictResponse
 from src.config.settings import settings
-from src.ingestion.pipeline import refresh_all_data
 from src.models.predictor import MatchupPredictor
-from src.models.training import train_all_models
 from src.services.odds_service import OddsService
 from src.utils.logging import get_logger
 
@@ -111,12 +109,16 @@ def odds(team_a: str, team_b: str) -> OddsQueryResponse:
 
 @app.post("/refresh-data", response_model=MessageResponse)
 def refresh_data() -> MessageResponse:
+    from src.ingestion.pipeline import refresh_all_data
+
     metadata = refresh_all_data(force=True)
     return MessageResponse(message="Data refresh complete", details=metadata)
 
 
 @app.post("/train", response_model=MessageResponse)
 def train() -> MessageResponse:
+    from src.models.training import train_all_models
+
     global predictor, odds_service
     summary = train_all_models()
     predictor = MatchupPredictor()

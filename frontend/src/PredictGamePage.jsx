@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import MarketContextSection from "./MarketContextSection";
 import TeamLogo from "./TeamLogo";
 import TeamCombobox from "./TeamCombobox";
+import { fetchJson } from "./apiClient";
 import { resolveTeamInput } from "./teamSearch";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
@@ -30,16 +31,17 @@ export default function PredictGamePage() {
   useEffect(() => {
     async function loadTeams() {
       try {
-        const response = await fetch(`${API_URL}/teams`);
-        const data = await response.json();
+        const data = await fetchJson(`${API_URL}/teams`, {
+          errorMessage: "Could not load teams. Train the backend first.",
+        });
         const loadedTeams = data.teams || [];
         setTeams(loadedTeams);
         setTeamAInput(loadedTeams[0] || "");
         setTeamBInput(loadedTeams[1] || "");
         setTeamASelected(loadedTeams[0] || "");
         setTeamBSelected(loadedTeams[1] || "");
-      } catch {
-        setError("Could not load teams. Train the backend first.");
+      } catch (err) {
+        setError(err.message || "Could not load teams. Train the backend first.");
       }
     }
     loadTeams();
@@ -59,11 +61,9 @@ export default function PredictGamePage() {
       setOddsError("");
       try {
         const params = new URLSearchParams({ team_a: result.team_a, team_b: result.team_b });
-        const response = await fetch(`${API_URL}/odds?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error("Could not load market context.");
-        }
-        const payload = await response.json();
+        const payload = await fetchJson(`${API_URL}/odds?${params.toString()}`, {
+          errorMessage: "Could not load market context.",
+        });
         if (!cancelled) setOddsContext(payload);
       } catch (err) {
         if (!cancelled) setOddsError(err.message);
@@ -138,7 +138,7 @@ export default function PredictGamePage() {
     setOddsContext(null);
     setOddsError("");
     try {
-      const response = await fetch(`${API_URL}/predict`, {
+      const payload = await fetchJson(`${API_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,12 +146,9 @@ export default function PredictGamePage() {
           team_b: teamBStatus.selected,
           neutral_site: neutralSite,
         }),
+        errorMessage: "Prediction failed",
       });
-      if (!response.ok) {
-        const payload = await response.json();
-        throw new Error(payload.detail || "Prediction failed");
-      }
-      setResult(await response.json());
+      setResult(payload);
     } catch (err) {
       setError(err.message);
     } finally {
