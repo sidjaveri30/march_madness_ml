@@ -15,19 +15,23 @@ function createLiveBracketProvider({ mode = LIVE_PROVIDER } = {}) {
   return createMockLiveProvider();
 }
 
-function useLiveBracketFeed({ definition = bracketDefinition, mode = LIVE_PROVIDER } = {}) {
+function useLiveBracketFeed({ definition = bracketDefinition, mode = LIVE_PROVIDER, disabled = false } = {}) {
   const provider = useMemo(() => createLiveBracketProvider({ mode }), [mode]);
   const store = useMemo(() => createLiveStateStore({ definition, provider }), [definition, provider]);
   const [snapshot, setSnapshot] = useState(store.getSnapshot());
 
   useEffect(() => {
+    if (disabled) {
+      setSnapshot(store.getSnapshot());
+      return () => {};
+    }
     const unsubscribe = store.subscribe(() => setSnapshot(store.getSnapshot()));
     store.start();
     return () => {
       unsubscribe();
       store.stop();
     };
-  }, [store]);
+  }, [disabled, store]);
 
   return {
     ...snapshot,

@@ -1116,6 +1116,254 @@ td:last-child {
   text-align: right;
 }
 
+.survivor-mode {
+  display: grid;
+  gap: 14px;
+}
+
+.survivor-hero,
+.survivor-section,
+.survivor-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.survivor-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+  padding: 16px;
+}
+
+.survivor-hero-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.survivor-section {
+  padding: 16px;
+}
+
+.survivor-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+
+.survivor-dashboard-grid,
+.survivor-config-grid,
+.survivor-columns,
+.survivor-pick-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.survivor-dashboard-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.survivor-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.survivor-config-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.survivor-pick-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.survivor-card {
+  padding: 14px;
+}
+
+.survivor-card-list {
+  min-height: 100%;
+}
+
+.survivor-field,
+.survivor-player-stack,
+.survivor-game-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.survivor-field span {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.survivor-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  color: inherit;
+}
+
+.survivor-inline-actions,
+.survivor-pick-footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.survivor-interval-stack,
+.survivor-games-list {
+  display: grid;
+  gap: 12px;
+}
+
+.survivor-player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.survivor-interval-header,
+.survivor-game-header,
+.survivor-player-row,
+.survivor-player-editor {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.survivor-player-row,
+.survivor-player-editor {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.survivor-player-row:last-child,
+.survivor-player-editor:last-child {
+  border-bottom: 0;
+}
+
+.survivor-player-row-eliminated,
+.survivor-player-editor-eliminated {
+  opacity: 0.8;
+}
+
+.survivor-game-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.survivor-game-editor {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+}
+
+.survivor-game-card {
+  background: var(--surface-soft);
+}
+
+.survivor-dashboard-game {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+}
+
+.survivor-team-pick {
+  min-height: 52px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: inherit;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+  font-weight: 700;
+}
+
+.survivor-team-pick-selected {
+  border-color: rgba(0, 87, 184, 0.4);
+  background: rgba(0, 87, 184, 0.08);
+  color: var(--accent);
+}
+
+.survivor-team-pick:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.survivor-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.survivor-status-chip-success {
+  border-color: rgba(21, 128, 61, 0.18);
+  background: rgba(21, 128, 61, 0.08);
+  color: var(--success);
+}
+
+.survivor-status-chip-danger {
+  border-color: rgba(194, 65, 12, 0.18);
+  background: rgba(194, 65, 12, 0.08);
+  color: var(--danger);
+}
+
+.survivor-pick-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.survivor-team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.survivor-game-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
 @media (max-width: 1400px) {
   .bracket-toolbar {
     flex-direction: column;
@@ -1142,7 +1390,12 @@ td:last-child {
   .modal-grid,
   .market-context-grid,
   .market-consensus-grid,
-  .live-ticker {
+  .live-ticker,
+  .survivor-dashboard-grid,
+  .survivor-columns,
+  .survivor-config-grid,
+  .survivor-pick-grid,
+  .survivor-game-fields {
     grid-template-columns: 1fr;
   }
 
@@ -1163,7 +1416,7 @@ td:last-child {
   .mode-switch {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bracket-toolbar-meta {
@@ -1185,5 +1438,18 @@ td:last-child {
 
   .entry-pill {
     min-width: 132px;
+  }
+
+  .survivor-hero,
+  .survivor-section-header,
+  .survivor-pick-summary,
+  .survivor-pick-footer,
+  .survivor-interval-header,
+  .survivor-game-header,
+  .survivor-player-row,
+  .survivor-player-editor,
+  .survivor-game-meta {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

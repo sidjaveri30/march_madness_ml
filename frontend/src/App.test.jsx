@@ -43,6 +43,18 @@ describe("Bracket app", () => {
           }),
         });
       }
+      if (String(url).includes("/live-scoreboard")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: "test-feed",
+            label: "Test Feed",
+            sections: { live: [], final: [], upcoming: [] },
+            games: [],
+            meta: {},
+          }),
+        });
+      }
       throw new Error(`Unhandled fetch ${url}`);
     });
   });
@@ -53,6 +65,7 @@ describe("Bracket app", () => {
     expect(screen.getByRole("tab", { name: "Predict a Game" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "My Bracket" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Live Bracket" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Survivor Pool" })).toBeInTheDocument();
   });
 
   it("switches to My Bracket, advances a team, and shows details", async () => {
@@ -79,5 +92,17 @@ describe("Bracket app", () => {
     expect(screen.getByText("Final")).toBeInTheDocument();
     expect(screen.getByText("Upcoming")).toBeInTheDocument();
     expect(screen.getByTestId("live-games-board")).toBeInTheDocument();
+  });
+
+  it("renders the Survivor Pool host workflow in the fourth tab", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("tab", { name: "Survivor Pool" }));
+
+    expect(screen.getByText("March Madness survivor, driven by the official bracket")).toBeInTheDocument();
+    expect(screen.getByText("Pool Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Manage the pool")).toBeInTheDocument();
+    expect(screen.getByText("Official round results")).toBeInTheDocument();
   });
 });

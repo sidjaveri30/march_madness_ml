@@ -3,11 +3,13 @@ import { useState } from "react";
 import PredictGamePage from "./PredictGamePage";
 import LiveBracketPage from "./bracket/LiveBracketPage";
 import MyBracketPage from "./bracket/MyBracketPage";
+import SurvivorPoolPage from "./survivor/SurvivorPoolPage";
 
 const MODES = [
   { id: "predict", label: "Predict a Game" },
   { id: "my-bracket", label: "My Bracket" },
   { id: "live-bracket", label: "Live Bracket" },
+  { id: "survivor-pool", label: "Survivor Pool" },
 ];
 
 export default function App() {
@@ -42,6 +44,7 @@ export default function App() {
       {mode === "predict" ? <PredictGamePage /> : null}
       {mode === "my-bracket" ? <MyBracketPage /> : null}
       {mode === "live-bracket" ? <LiveBracketPage /> : null}
+      {mode === "survivor-pool" ? <SurvivorPoolPage /> : null}
     </main>
   );
 }
