@@ -1,5 +1,6 @@
 import { createBracketState, getMatchupTeams, getOrderedMatchups, setWinnerPick } from "./bracketState";
 import { isPickableTeam, isPlaceholderTeam, sameTeam } from "./bracketTeams";
+import { chooseWinnerByMode, DEFAULT_AUTO_FILL_MODE } from "./autoFillModes";
 
 function getPredictableTeamVariants(team) {
   if (!team) return [];
@@ -18,7 +19,22 @@ async function getCachedPrediction(teamA, teamB, predictMatchup, cache) {
   return cache.get(key);
 }
 
-async function resolvePredictedWinner(teamA, teamB, predictMatchup, cache = new Map()) {
+function buildSeedLookup(definition, state) {
+  const seedLookup = new Map();
+  getOrderedMatchups(definition).forEach((matchup) => {
+    matchup.slots.forEach((slot) => {
+      if (slot.source.type !== "input") return;
+      const teamName = state.initialAssignments?.[slot.source.slotId];
+      if (typeof teamName === "string" && teamName && slot.seed) {
+        seedLookup.set(teamName, slot.seed);
+      }
+    });
+  });
+  return seedLookup;
+}
+
+async function resolvePredictedWinner(teamA, teamB, predictMatchup, options = {}) {
+  const { cache = new Map(), matchup = null, mode = DEFAULT_AUTO_FILL_MODE, rng = Math.random, seedLookup = new Map() } = options;
   if (!isPickableTeam(teamA) || !isPickableTeam(teamB)) return null;
   if (sameTeam(teamA, teamB)) return teamA;
 
@@ -28,6 +44,7 @@ async function resolvePredictedWinner(teamA, teamB, predictMatchup, cache = new 
 
   let totalTeamAWinProb = 0;
   let totalComparisons = 0;
+  const featureSnapshotTotals = {};
 
   for (const teamAName of teamAVariants) {
     for (const teamBName of teamBVariants) {
@@ -47,15 +64,42 @@ async function resolvePredictedWinner(teamA, teamB, predictMatchup, cache = new 
 
       totalTeamAWinProb += probability;
       totalComparisons += 1;
+      Object.entries(prediction?.feature_snapshot || {}).forEach(([key, value]) => {
+        if (typeof value !== "number") return;
+        featureSnapshotTotals[key] = (featureSnapshotTotals[key] || 0) + value;
+      });
     }
   }
 
   if (totalComparisons === 0) return null;
-  return totalTeamAWinProb / totalComparisons >= 0.5 ? teamA : teamB;
+  const averagedFeatureSnapshot = Object.fromEntries(
+    Object.entries(featureSnapshotTotals).map(([key, value]) => [key, value / totalComparisons]),
+  );
+  const aggregatedPrediction = {
+    team_a: teamA,
+    team_b: teamB,
+    predicted_winner: totalTeamAWinProb >= 0.5 ? teamA : teamB,
+    win_probability_team_a: totalTeamAWinProb / totalComparisons,
+    win_probability_team_b: 1 - totalTeamAWinProb / totalComparisons,
+    feature_snapshot: averagedFeatureSnapshot,
+  };
+
+  const selection = chooseWinnerByMode({
+    matchup,
+    mode,
+    prediction: aggregatedPrediction,
+    rng,
+    seedA: seedLookup.get(teamA),
+    seedB: seedLookup.get(teamB),
+    teamA,
+    teamB,
+  });
+  return selection.winner;
 }
 
-async function autoFillBracket({ definition, overwrite = false, predictMatchup, state }) {
+async function autoFillBracket({ definition, mode = DEFAULT_AUTO_FILL_MODE, overwrite = false, predictMatchup, rng = Math.random, state }) {
   const predictionCache = new Map();
+  const seedLookup = buildSeedLookup(definition, state);
   let nextState = overwrite
     ? createBracketState(definition, { initialAssignments: state.initialAssignments, picks: {} })
     : state;
@@ -68,7 +112,13 @@ async function autoFillBracket({ definition, overwrite = false, predictMatchup, 
     const teams = getMatchupTeams(definition, nextState, matchup.id);
     if (teams.length !== 2 || teams.some((team) => !isPickableTeam(team))) continue;
 
-    const winner = await resolvePredictedWinner(teams[0], teams[1], predictMatchup, predictionCache);
+    const winner = await resolvePredictedWinner(teams[0], teams[1], predictMatchup, {
+      cache: predictionCache,
+      matchup,
+      mode,
+      rng,
+      seedLookup,
+    });
     if (!winner) continue;
 
     const before = nextState.picks[matchup.id];
@@ -79,10 +129,11 @@ async function autoFillBracket({ definition, overwrite = false, predictMatchup, 
   }
 
   return {
+    mode,
     state: nextState,
     filledMatchups,
     requestCount: predictionCache.size,
   };
 }
 
-export { autoFillBracket, getPredictableTeamVariants, resolvePredictedWinner };
+export { autoFillBracket, buildSeedLookup, getPredictableTeamVariants, resolvePredictedWinner };

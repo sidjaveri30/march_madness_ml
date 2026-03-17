@@ -392,6 +392,40 @@ h4 {
   border: 1px solid var(--line);
 }
 
+.autofill-mode-picker {
+  min-width: 240px;
+  max-width: 280px;
+  display: grid;
+  gap: 6px;
+  padding-right: 8px;
+  margin-right: 2px;
+  border-right: 1px solid rgba(151, 166, 190, 0.18);
+}
+
+.autofill-mode-label {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.autofill-mode-select {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text-strong);
+  padding: 0 12px;
+}
+
+.autofill-mode-description {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  max-width: 32ch;
+}
+
 .entry-manager {
   display: grid;
   gap: 14px;
@@ -1982,6 +2016,14 @@ td:last-child {
   .save-controls-wrap,
   .save-controls {
     width: 100%;
+  }
+
+  .autofill-mode-picker {
+    min-width: 100%;
+    max-width: none;
+    margin-right: 0;
+    padding-right: 0;
+    border-right: none;
   }
 
   .entry-manager-summary,

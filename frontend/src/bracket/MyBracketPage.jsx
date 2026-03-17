@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { autoFillBracket } from "./autoFillBracket";
+import { AUTO_FILL_MODE_DETAILS, AUTO_FILL_MODE_OPTIONS, DEFAULT_AUTO_FILL_MODE } from "./autoFillModes";
 import { bracketDefinition } from "./bracketDefinition";
 import { applyWinnerPick, clearWinnerPick, createBracketState, getChampion, getMatchupTeams, setWinnerPick } from "./bracketState";
 import {
@@ -38,6 +39,7 @@ export default function MyBracketPage() {
   const [predictionCache, setPredictionCache] = useState({});
   const [saveStatus, setSaveStatus] = useState("");
   const [autoFillBusy, setAutoFillBusy] = useState(false);
+  const [autoFillMode, setAutoFillMode] = useState(DEFAULT_AUTO_FILL_MODE);
   const [debugLayout, setDebugLayout] = useState(false);
   const autoFillPredictionCacheRef = useRef(new Map());
 
@@ -68,6 +70,7 @@ export default function MyBracketPage() {
   }, [bracketState, predictionCache, selectedMatchup]);
 
   const champion = useMemo(() => getChampion(bracketState), [bracketState]);
+  const selectedAutoFillMode = AUTO_FILL_MODE_DETAILS[autoFillMode] || AUTO_FILL_MODE_DETAILS[DEFAULT_AUTO_FILL_MODE];
 
   function flashStatus(message, duration = 1800) {
     setSaveStatus(message);
@@ -181,6 +184,7 @@ export default function MyBracketPage() {
       await validateBracketPredictionNames(API_URL, bracketDefinition);
       const result = await autoFillBracket({
         definition: bracketDefinition,
+        mode: autoFillMode,
         overwrite,
         predictMatchup: getAutoFillPrediction,
         state: bracketState,
@@ -189,7 +193,7 @@ export default function MyBracketPage() {
       commitState(result.state);
       flashStatus(
         result.filledMatchups > 0
-          ? `${overwrite ? "Model overwrite complete." : "Auto-fill complete."} ${result.filledMatchups} matchup${result.filledMatchups === 1 ? "" : "s"} updated.`
+          ? `${overwrite ? `${selectedAutoFillMode.label} overwrite complete.` : `${selectedAutoFillMode.label} auto-fill complete.`} ${result.filledMatchups} matchup${result.filledMatchups === 1 ? "" : "s"} updated.`
           : "No unresolved matchups were updated.",
         2200,
       );
@@ -240,7 +244,11 @@ export default function MyBracketPage() {
         <div className="save-controls-wrap">
           <SaveBracketControls
             autoFillBusy={autoFillBusy}
+            autoFillMode={selectedAutoFillMode.id}
+            autoFillModeDescription={selectedAutoFillMode.description}
+            autoFillModeOptions={AUTO_FILL_MODE_OPTIONS}
             onAutoFill={() => handleAutoFill(false)}
+            onAutoFillModeChange={setAutoFillMode}
             onAutoFillOverwrite={() => handleAutoFill(true)}
             onExport={handleExport}
             onImport={handleImport}
