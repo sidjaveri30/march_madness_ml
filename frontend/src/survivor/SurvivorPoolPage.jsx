@@ -9,6 +9,7 @@ import PickEntrySection from "./PickEntrySection";
 import PoolDashboard from "./PoolDashboard";
 import ResultsProcessorSection from "./ResultsProcessorSection";
 import SurvivorPoolManager from "./SurvivorPoolManager";
+import { useDebouncedEffect } from "../useDebouncedEffect";
 import {
   addSurvivorPool,
   createPoolName,
@@ -23,6 +24,7 @@ import {
 } from "./survivorPoolStorage.js";
 import {
   SURVIVOR_ROUND_CONFIG,
+  arePoolsEquivalent,
   buildRoundContext,
   clearPlayerRoundPicks,
   createPlayer,
@@ -88,15 +90,19 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     [workspace],
   );
 
-  useEffect(() => {
+  useDebouncedEffect(() => {
     saveSurvivorPoolWorkspace(workspace);
-  }, [workspace]);
+  }, 300, [workspace]);
 
   useEffect(() => {
     setWorkspace((current) =>
-      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => ({
-        pool: recomputePoolState(entry.pool, bracketDefinition, officialBracketState, gamesByMatchupId),
-      })),
+      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => {
+        const nextPool = recomputePoolState(entry.pool, bracketDefinition, officialBracketState, gamesByMatchupId);
+        if (arePoolsEquivalent(entry.pool, nextPool)) {
+          return {};
+        }
+        return { pool: nextPool };
+      }),
     );
   }, [officialBracketState, gamesByMatchupId]);
 

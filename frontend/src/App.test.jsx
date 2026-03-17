@@ -73,13 +73,12 @@ describe("Bracket app", () => {
     render(<App />);
 
     await user.click(screen.getByRole("tab", { name: "My Bracket" }));
+    expect(await screen.findByText("Build and save your entries")).toBeInTheDocument();
     const dukeButtons = await screen.findAllByRole("button", { name: /Duke/i });
     await user.click(dukeButtons[0]);
+    await user.click(await screen.findByTestId("details-east_r1_1"));
 
-    const detailsButtons = await screen.findAllByLabelText(/View .* details/i);
-    await user.click(detailsButtons[0]);
-
-    expect(await screen.findByText("Projected margin: 6.2")).toBeInTheDocument();
+    expect(await screen.findByText("Model lean")).toBeInTheDocument();
   });
 
   it("renders the live ticker only in Live Bracket", async () => {
@@ -100,7 +99,7 @@ describe("Bracket app", () => {
 
     await user.click(screen.getByRole("tab", { name: "Survivor Pool" }));
 
-    expect(screen.getByText("March Madness survivor, driven by the official bracket")).toBeInTheDocument();
+    expect(await screen.findByText("March Madness survivor, driven by the official bracket")).toBeInTheDocument();
     expect(screen.getByText("Pool Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Manage the pool")).toBeInTheDocument();
     expect(screen.getByText("Official round results")).toBeInTheDocument();

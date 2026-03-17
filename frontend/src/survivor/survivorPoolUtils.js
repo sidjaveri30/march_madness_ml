@@ -47,6 +47,48 @@ function clonePick(pick) {
   };
 }
 
+function sameStringArrays(left = [], right = []) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function samePicks(left = [], right = []) {
+  return (
+    left.length === right.length &&
+    left.every((pick, index) => {
+      const candidate = right[index];
+      return (
+        candidate &&
+        pick.roundKey === candidate.roundKey &&
+        pick.wasCorrect === candidate.wasCorrect &&
+        sameStringArrays(pick.teamIds, candidate.teamIds)
+      );
+    })
+  );
+}
+
+function arePoolsEquivalent(left, right) {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  if (left.id !== right.id || left.name !== right.name) return false;
+  if (!sameStringArrays(left.processedRoundKeys, right.processedRoundKeys)) return false;
+  if (left.players.length !== right.players.length) return false;
+
+  return left.players.every((player, index) => {
+    const candidate = right.players[index];
+    return (
+      candidate &&
+      player.id === candidate.id &&
+      player.name === candidate.name &&
+      player.eliminated === candidate.eliminated &&
+      player.eliminatedRound === candidate.eliminatedRound &&
+      player.eliminationReason === candidate.eliminationReason &&
+      sameStringArrays(player.eliminationPickIds, candidate.eliminationPickIds) &&
+      sameStringArrays(player.usedTeamIds, candidate.usedTeamIds) &&
+      samePicks(player.picks, candidate.picks)
+    );
+  });
+}
+
 function resetDerivedPlayerState(player) {
   return {
     ...player,
@@ -498,6 +540,7 @@ function getPlayerCurrentRoundStatuses(player, roundContext, teamLookup) {
 }
 
 export {
+  arePoolsEquivalent,
   SURVIVOR_ROUND_CONFIG,
   buildRoundContext,
   canPlayerMakeRoundPicks,

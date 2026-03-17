@@ -23,6 +23,7 @@ import { isResolvedTeam, sameTeam } from "./bracketTeams";
 import { createExactPredictionKey, createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
 import SaveBracketControls from "./SaveBracketControls";
 import { validateBracketPredictionNames } from "./teamNameResolver";
+import { useDebouncedEffect } from "../useDebouncedEffect";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -47,9 +48,9 @@ export default function MyBracketPage() {
   const bracketState = useMemo(() => sanitizeEntryState(activeEntry), [activeEntry]);
   const [entryNameDraft, setEntryNameDraft] = useState(activeEntry?.name || "");
 
-  useEffect(() => {
+  useDebouncedEffect(() => {
     saveBracketWorkspace(workspace);
-  }, [workspace]);
+  }, 250, [workspace]);
 
   useEffect(() => {
     setEntryNameDraft(activeEntry?.name || "");

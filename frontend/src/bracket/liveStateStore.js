@@ -28,7 +28,11 @@ function createLiveStateStore({ definition, provider }) {
   async function refresh() {
     if (refreshInFlight) return;
     refreshInFlight = true;
-    setState({ loading: true, error: "" });
+    if (!state.view) {
+      setState({ loading: true, error: "" });
+    } else if (state.error) {
+      setState({ error: "" });
+    }
     try {
       const view = await provider.getView({ cursor, definition });
       setState({ loading: false, error: "", view });
@@ -40,6 +44,7 @@ function createLiveStateStore({ definition, provider }) {
   }
 
   function start() {
+    if (intervalId) return;
     refresh();
     if (provider.pollIntervalMs) {
       intervalId = window.setInterval(refresh, provider.pollIntervalMs);

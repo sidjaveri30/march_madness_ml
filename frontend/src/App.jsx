@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { Suspense, lazy, useMemo, useState } from "react";
 
-import PredictGamePage from "./PredictGamePage";
-import LiveBracketPage from "./bracket/LiveBracketPage";
-import MyBracketPage from "./bracket/MyBracketPage";
-import SurvivorPoolPage from "./survivor/SurvivorPoolPage";
+const PredictGamePage = lazy(() => import("./PredictGamePage"));
+const LiveBracketPage = lazy(() => import("./bracket/LiveBracketPage"));
+const MyBracketPage = lazy(() => import("./bracket/MyBracketPage"));
+const SurvivorPoolPage = lazy(() => import("./survivor/SurvivorPoolPage"));
 
 const MODES = [
   { id: "predict", label: "Predict a Game" },
@@ -15,6 +15,19 @@ const MODES = [
 export default function App() {
   const [mode, setMode] = useState("predict");
   const activeMode = MODES.find((option) => option.id === mode);
+  const ActivePage = useMemo(() => {
+    switch (mode) {
+      case "my-bracket":
+        return MyBracketPage;
+      case "live-bracket":
+        return LiveBracketPage;
+      case "survivor-pool":
+        return SurvivorPoolPage;
+      case "predict":
+      default:
+        return PredictGamePage;
+    }
+  }, [mode]);
 
   return (
     <main className="shell">
@@ -48,10 +61,9 @@ export default function App() {
         </div>
       </section>
 
-      {mode === "predict" ? <PredictGamePage /> : null}
-      {mode === "my-bracket" ? <MyBracketPage /> : null}
-      {mode === "live-bracket" ? <LiveBracketPage /> : null}
-      {mode === "survivor-pool" ? <SurvivorPoolPage /> : null}
+      <Suspense fallback={<section className="mode-panel"><p className="subtle">Loading workspace...</p></section>}>
+        <ActivePage />
+      </Suspense>
     </main>
   );
 }
