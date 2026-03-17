@@ -12,12 +12,15 @@ from src.utils.team_names import normalizer, register_school_aliases
 
 logger = get_logger(__name__)
 
+CONTEXT_FEATURES = ["neutral_site", "is_home", "is_away"]
+
 
 @dataclass
 class FeatureArtifacts:
     season: int
     training_rows: int
     team_profile_rows: int
+    market_features_available: bool = False
 
 
 PUBLIC_COLUMN_CANDIDATES = {
@@ -85,6 +88,24 @@ KENPOM_COLUMN_ALIASES = {
 
 CURATED_PUBLIC_SUPPORT = [
     "games_played_before",
+    "wins_before",
+    "losses_before",
+    "win_pct_pre",
+    "avg_margin_pre",
+    "avg_points_for_pre",
+    "avg_points_against_pre",
+    "recent_win_pct_5",
+    "recent_win_pct_10",
+    "recent_margin_5",
+    "recent_margin_10",
+    "recent_points_for_5",
+    "recent_points_against_5",
+    "season_off_eff_proxy",
+    "season_def_eff_proxy",
+    "recent_form_rating",
+    "recent_balance_rating",
+    "recent_consistency_10",
+    "days_since_last_game",
     "avg_opp_adjem_pre",
     "avg_opp_adjo_pre",
     "avg_opp_adjd_pre",
@@ -97,6 +118,12 @@ CURATED_PUBLIC_SUPPORT = [
 ]
 
 SUPPORT_KP_FEATURES = ["kp_rank"]
+
+EXTERNAL_TEAM_FEATURES = [
+    "kp_rank",
+    "seed_estimate",
+    "seed_power",
+]
 
 CURATED_KP_FEATURES = [
     "adjem",
@@ -158,6 +185,13 @@ INTERACTION_FEATURES = [
     "size_experience_diff",
     "bench_continuity_diff",
     "opponent_quality_resilience_diff",
+]
+
+MARKET_FEATURES = [
+    "market_implied_prob",
+    "market_spread",
+    "market_total",
+    "market_favorite",
 ]
 
 
@@ -244,6 +278,8 @@ def _add_team_form_features(cleaned_games: pd.DataFrame) -> pd.DataFrame:
     df = cleaned_games.copy()
     grouped = df.groupby("team_normalized", group_keys=False)
     df["games_played_before"] = grouped.cumcount()
+    df["wins_before"] = grouped["win"].transform(lambda s: s.shift().cumsum()).fillna(0.0)
+    df["losses_before"] = df["games_played_before"] - df["wins_before"]
     df["win_pct_pre"] = grouped["win"].transform(lambda s: s.shift().expanding().mean()).fillna(0.5)
     df["avg_points_for_pre"] = grouped["team_score"].transform(lambda s: s.shift().expanding().mean()).fillna(0.0)
     df["avg_points_against_pre"] = grouped["opp_score"].transform(lambda s: s.shift().expanding().mean()).fillna(0.0)
@@ -251,6 +287,7 @@ def _add_team_form_features(cleaned_games: pd.DataFrame) -> pd.DataFrame:
     df["recent_win_pct_5"] = grouped["win"].transform(lambda s: s.shift().rolling(5, min_periods=1).mean()).fillna(0.5)
     df["recent_win_pct_10"] = grouped["win"].transform(lambda s: s.shift().rolling(10, min_periods=1).mean()).fillna(0.5)
     df["recent_margin_5"] = grouped["margin"].transform(lambda s: s.shift().rolling(5, min_periods=1).mean()).fillna(0.0)
+    df["recent_margin_10"] = grouped["margin"].transform(lambda s: s.shift().rolling(10, min_periods=1).mean()).fillna(0.0)
     df["recent_points_for_5"] = grouped["team_score"].transform(lambda s: s.shift().rolling(5, min_periods=1).mean()).fillna(0.0)
     df["recent_points_against_5"] = grouped["opp_score"].transform(lambda s: s.shift().rolling(5, min_periods=1).mean()).fillna(0.0)
     df["season_off_eff_proxy"] = (
@@ -258,6 +295,24 @@ def _add_team_form_features(cleaned_games: pd.DataFrame) -> pd.DataFrame:
     )
     df["season_def_eff_proxy"] = (
         100 * df["avg_points_against_pre"] / np.maximum(df["avg_points_for_pre"] + df["avg_points_against_pre"], 1)
+    )
+    previous_date = grouped["date"].shift()
+    df["days_since_last_game"] = (
+        (df["date"] - previous_date).dt.total_seconds() / 86400
+    ).fillna(7.0).clip(lower=0.0, upper=21.0)
+    df["recent_consistency_10"] = grouped["margin"].transform(
+        lambda s: s.shift().rolling(10, min_periods=2).std()
+    ).fillna(0.0)
+    df["recent_form_rating"] = (
+        0.55 * df["recent_margin_5"]
+        + 0.30 * df["recent_margin_10"]
+        + 14.0 * (df["recent_win_pct_5"] - 0.5)
+        + 0.15 * (df["season_off_eff_proxy"] - df["season_def_eff_proxy"])
+    )
+    df["recent_balance_rating"] = (
+        df["recent_points_for_5"]
+        - df["recent_points_against_5"]
+        + 5.0 * (df["recent_win_pct_10"] - 0.5)
     )
     return df
 
@@ -274,8 +329,13 @@ def _flatten_kenpom_features(kenpom: pd.DataFrame) -> pd.DataFrame:
     }
     if alias_columns:
         df = pd.concat([df, pd.DataFrame(alias_columns, index=df.index)], axis=1)
+    if "kp_rank" in df.columns:
+        rank_numeric = pd.to_numeric(df["kp_rank"], errors="coerce")
+        df["seed_estimate"] = np.clip(np.ceil(rank_numeric / 4.0), 1, 16)
+        df["seed_power"] = 17 - df["seed_estimate"]
     keep_cols = ["team", "team_normalized"] + [col for col in numeric_cols if df[col].notna().sum() > 0]
     keep_cols.extend([alias for alias in KENPOM_COLUMN_ALIASES.values() if alias in df.columns])
+    keep_cols.extend([feature for feature in EXTERNAL_TEAM_FEATURES if feature in df.columns])
     return df[list(dict.fromkeys(keep_cols))].drop_duplicates(subset=["team_normalized"])
 
 
@@ -314,9 +374,9 @@ def build_training_dataset(season: int | None = None) -> FeatureArtifacts:
         }
     )
     cleaned = cleaned.merge(opponent_lookup, on="opponent_normalized", how="left")
+    cleaned = _add_team_form_features(cleaned)
 
     grouped = cleaned.groupby("team_normalized", group_keys=False)
-    cleaned["games_played_before"] = grouped.cumcount()
     cleaned["avg_opp_adjem_pre"] = _rolling_group_stat(grouped, "opp_current_adjem").fillna(0.0)
     cleaned["avg_opp_adjo_pre"] = _rolling_group_stat(grouped, "opp_current_adjo").fillna(0.0)
     cleaned["avg_opp_adjd_pre"] = _rolling_group_stat(grouped, "opp_current_adjd").fillna(0.0)
@@ -347,14 +407,14 @@ def build_training_dataset(season: int | None = None) -> FeatureArtifacts:
     ).fillna(0.0)
 
     team_stats = cleaned.copy()
-    opponent_feature_columns = CURATED_PUBLIC_SUPPORT + CURATED_KP_FEATURES
+    opponent_feature_columns = CURATED_PUBLIC_SUPPORT + EXTERNAL_TEAM_FEATURES + CURATED_KP_FEATURES + MARKET_FEATURES
     opponent_stats = team_stats[
         ["team_normalized", "date"] + [col for col in opponent_feature_columns if col in team_stats.columns]
     ].rename(columns={"team_normalized": "opponent_normalized", **{col: f"opp_{col}" for col in opponent_feature_columns if col in team_stats.columns}})
 
     matchup = team_stats.merge(opponent_stats, on=["opponent_normalized", "date"], how="left")
 
-    for feature in CURATED_PUBLIC_SUPPORT + CURATED_KP_FEATURES:
+    for feature in CURATED_PUBLIC_SUPPORT + EXTERNAL_TEAM_FEATURES + CURATED_KP_FEATURES + MARKET_FEATURES:
         opp_feature = f"opp_{feature}"
         if feature in matchup.columns and opp_feature in matchup.columns:
             matchup[f"{feature}_diff"] = pd.to_numeric(matchup[feature], errors="coerce") - pd.to_numeric(
@@ -458,4 +518,5 @@ def build_training_dataset(season: int | None = None) -> FeatureArtifacts:
         season=chosen_season,
         training_rows=len(training),
         team_profile_rows=len(latest_team_profiles),
+        market_features_available=any(feature in training.columns for feature in MARKET_FEATURES),
     )
