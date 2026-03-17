@@ -4,11 +4,29 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LiveBracketPage from "./LiveBracketPage";
 import MyBracketPage from "./MyBracketPage";
+import { resetSharedLiveFeedStores } from "./liveBracketProvider";
+import { MOCK_LIVE_SNAPSHOTS } from "./liveBracketData";
 
 describe("LiveBracketPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    resetSharedLiveFeedStores();
+    let liveScoreboardCallCount = 0;
     global.fetch = vi.fn((url, options) => {
+      if (String(url).includes("/live-scoreboard")) {
+        const snapshot = MOCK_LIVE_SNAPSHOTS[Math.min(liveScoreboardCallCount, MOCK_LIVE_SNAPSHOTS.length - 1)];
+        liveScoreboardCallCount += 1;
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            provider: "espn",
+            fetchedAt: "2026-03-17T10:00:00Z",
+            fallbackProvider: null,
+            error: null,
+            games: Object.values(snapshot.games),
+          }),
+        });
+      }
       if (String(url).includes("/odds")) {
         return Promise.resolve({
           ok: true,
@@ -47,12 +65,13 @@ describe("LiveBracketPage", () => {
     const user = userEvent.setup();
     render(<LiveBracketPage />);
 
-    expect(screen.getByText("Live Now")).toBeInTheDocument();
-    expect(screen.getByText("2H 12:14")).toBeInTheDocument();
+    expect(await screen.findByText("Live Now")).toBeInTheDocument();
+    expect(await screen.findByText(/2H 12:14/i)).toBeInTheDocument();
     expect(within(screen.getByTestId("matchup-midwest_r1_1")).getByRole("button", { name: /Howard \/ UMBC/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Next Mock Update" }));
+    await user.click(screen.getByRole("button", { name: "Refresh Now" }));
 
+    expect(await screen.findAllByText("FINAL")).not.toHaveLength(0);
     expect(within(screen.getByTestId("matchup-midwest_r1_1")).getByRole("button", { name: /Howard/i })).toBeInTheDocument();
     expect(within(screen.getByTestId("matchup-east_r2_1")).getByRole("button", { name: /Ohio St\./i })).toBeInTheDocument();
   });
@@ -65,7 +84,7 @@ describe("LiveBracketPage", () => {
     expect(within(screen.getByTestId("matchup-east_r1_2")).getByRole("button", { name: /TCU/i })).toHaveClass("team-slot-selected");
 
     render(<LiveBracketPage />);
-    await user.click(screen.getByRole("button", { name: "Next Mock Update" }));
+    await user.click(await screen.findByRole("button", { name: "Refresh Now" }));
 
     expect(JSON.parse(window.localStorage.getItem("march-madness-bracket-workspace-v1")).entries[0].state.picks.east_r1_2).toBe("TCU");
   });

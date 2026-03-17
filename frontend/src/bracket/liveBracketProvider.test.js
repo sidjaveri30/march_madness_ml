@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bracketDefinition } from "./bracketDefinition";
 import { buildOfficialBracketView } from "./liveBracketEngine";
 import { createEspnLiveProvider } from "./espnLiveProvider";
+import { resetSharedLiveFeedStores } from "./liveBracketProvider";
 import { createLiveStateStore } from "./liveStateStore";
 import { createMockLiveProvider } from "./mockLiveProvider";
 
@@ -66,6 +67,7 @@ describe("espn live provider", () => {
 describe("liveStateStore", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    resetSharedLiveFeedStores();
   });
 
   afterEach(() => {

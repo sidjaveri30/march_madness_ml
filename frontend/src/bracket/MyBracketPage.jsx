@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { autoFillBracket } from "./autoFillBracket";
 import { AUTO_FILL_MODE_DETAILS, AUTO_FILL_MODE_OPTIONS, DEFAULT_AUTO_FILL_MODE } from "./autoFillModes";
@@ -78,24 +78,31 @@ export default function MyBracketPage() {
     window.setTimeout(() => setSaveStatus(""), duration);
   }
 
-  function commitState(nextState) {
+  const commitState = useCallback((nextState) => {
     setWorkspace((current) =>
       replaceWorkspaceEntryState(current, current.activeEntryId, nextState),
     );
-  }
+  }, []);
 
-  function handlePick(matchupId, winner) {
-    const currentWinner = bracketState.picks[matchupId];
-    if (sameTeam(currentWinner, winner)) {
-      commitState(clearWinnerPick(bracketDefinition, bracketState, matchupId));
-      return;
-    }
-    commitState(applyWinnerPick(bracketDefinition, bracketState, matchupId, winner));
-  }
+  const handlePick = useCallback((matchupId, winner) => {
+    setWorkspace((current) => {
+      const currentEntry = getActiveEntry(current);
+      const currentState = sanitizeEntryState(currentEntry);
+      const currentWinner = currentState.picks[matchupId];
+      const nextState = sameTeam(currentWinner, winner)
+        ? clearWinnerPick(bracketDefinition, currentState, matchupId)
+        : applyWinnerPick(bracketDefinition, currentState, matchupId, winner);
+      return replaceWorkspaceEntryState(current, current.activeEntryId, nextState);
+    });
+  }, []);
 
-  function handlePickFromModal(matchupId, winner) {
-    commitState(setWinnerPick(bracketDefinition, bracketState, matchupId, winner));
-  }
+  const handlePickFromModal = useCallback((matchupId, winner) => {
+    setWorkspace((current) => {
+      const currentEntry = getActiveEntry(current);
+      const currentState = sanitizeEntryState(currentEntry);
+      return replaceWorkspaceEntryState(current, current.activeEntryId, setWinnerPick(bracketDefinition, currentState, matchupId, winner));
+    });
+  }, []);
 
   function handleSave() {
     setWorkspace((current) => {

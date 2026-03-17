@@ -7,7 +7,7 @@ import { createLiveStateStore } from "./liveStateStore";
 import { createMockLiveProvider } from "./mockLiveProvider";
 
 const LIVE_PROVIDER = import.meta.env.VITE_LIVE_PROVIDER || "espn";
-const sharedStoresByDefinition = new WeakMap();
+let sharedStoresByDefinition = new WeakMap();
 
 function createLiveBracketProvider({ mode = LIVE_PROVIDER } = {}) {
   if (mode === "espn") {
@@ -35,6 +35,10 @@ function getSharedLiveFeedStore(definition, mode) {
   }
 
   return storesForDefinition.get(mode);
+}
+
+function resetSharedLiveFeedStores() {
+  sharedStoresByDefinition = new WeakMap();
 }
 
 function useLiveBracketFeed({ definition = bracketDefinition, mode = LIVE_PROVIDER, disabled = false } = {}) {
@@ -77,4 +81,4 @@ function useLiveBracketFeed({ definition = bracketDefinition, mode = LIVE_PROVID
   };
 }
 
-export { EMPTY_SECTIONS, createLiveBracketProvider, useLiveBracketFeed };
+export { EMPTY_SECTIONS, createLiveBracketProvider, resetSharedLiveFeedStores, useLiveBracketFeed };

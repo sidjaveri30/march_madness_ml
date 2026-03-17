@@ -1,3 +1,10 @@
+const COMMENCE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 function compactWhitespace(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
@@ -23,12 +30,7 @@ function formatCommenceTime(value) {
     return compactWhitespace(value);
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(parsed).replace(",", " •");
+  return COMMENCE_TIME_FORMATTER.format(parsed).replace(",", " •");
 }
 
 function compactLiveDetail(statusLabel) {

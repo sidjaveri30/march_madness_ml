@@ -3,10 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { resetSharedLiveFeedStores } from "./bracket/liveBracketProvider";
 
 describe("Bracket app", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    resetSharedLiveFeedStores();
     global.fetch = vi.fn((url) => {
       if (String(url).includes("/teams")) {
         return Promise.resolve({

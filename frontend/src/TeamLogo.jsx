@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { getTeamInitials, getTeamLogoUrl } from "./teamMetadata";
 
-export default function TeamLogo({ team, className = "", size = "md" }) {
+function TeamLogo({ team, className = "", size = "md" }) {
   const [failed, setFailed] = useState(false);
   const logoUrl = getTeamLogoUrl(team);
   const showImage = Boolean(team && logoUrl && !failed);
@@ -28,3 +28,5 @@ export default function TeamLogo({ team, className = "", size = "md" }) {
     </span>
   );
 }
+
+export default memo(TeamLogo);

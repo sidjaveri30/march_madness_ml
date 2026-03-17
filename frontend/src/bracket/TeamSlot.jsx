@@ -1,7 +1,9 @@
-import TeamLogo from "../TeamLogo";
-import { getTeamName, isPlaceholderTeam } from "./bracketTeams";
+import { memo } from "react";
 
-export default function TeamSlot({ team, seed, isSelected, isDisabled, onClick, interactive = true, score = null }) {
+import TeamLogo from "../TeamLogo";
+import { getTeamId, getTeamName, isPlaceholderTeam } from "./bracketTeams";
+
+function TeamSlot({ team, seed, isSelected, isDisabled, onClick, interactive = true, score = null }) {
   const teamName = getTeamName(team);
   const isPlaceholder = isPlaceholderTeam(team);
   return (
@@ -18,3 +20,16 @@ export default function TeamSlot({ team, seed, isSelected, isDisabled, onClick, 
     </button>
   );
 }
+
+function areEqualTeamSlots(previousProps, nextProps) {
+  return (
+    getTeamId(previousProps.team) === getTeamId(nextProps.team) &&
+    previousProps.seed === nextProps.seed &&
+    previousProps.isSelected === nextProps.isSelected &&
+    previousProps.isDisabled === nextProps.isDisabled &&
+    previousProps.interactive === nextProps.interactive &&
+    previousProps.score === nextProps.score
+  );
+}
+
+export default memo(TeamSlot, areEqualTeamSlots);
