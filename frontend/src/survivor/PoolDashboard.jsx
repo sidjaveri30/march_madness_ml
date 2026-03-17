@@ -16,22 +16,22 @@ export default function PoolDashboard({
       </div>
 
       <div className="survivor-dashboard-grid">
-        <article className="survivor-card">
-          <div className="eyebrow">Current Round</div>
-          <strong>{currentRound?.tournamentLabel || "Tournament Complete"}</strong>
-          <p className="subtle">
+        <article className="survivor-card survivor-metric-card">
+          <div className="survivor-card-label">Current Round</div>
+          <strong className="survivor-metric-value">{currentRound?.tournamentLabel || "Tournament Complete"}</strong>
+          <p className="survivor-card-description">
             {currentRound ? `${currentRound.requiredPicks} required pick${currentRound.requiredPicks === 1 ? "" : "s"}` : "No further picks required"}
           </p>
         </article>
-        <article className="survivor-card">
-          <div className="eyebrow">Active Survivors</div>
-          <strong>{activePlayers.length}</strong>
-          <p className="subtle">Players still eligible to advance through the bracket.</p>
+        <article className="survivor-card survivor-metric-card">
+          <div className="survivor-card-label">Active Survivors</div>
+          <strong className="survivor-metric-value">{activePlayers.length}</strong>
+          <p className="survivor-card-description">Players still eligible to advance through the bracket.</p>
         </article>
-        <article className="survivor-card">
-          <div className="eyebrow">Rounds Processed</div>
-          <strong>{processedRoundCount}</strong>
-          <p className="subtle">Official tournament rounds already scored in the pool.</p>
+        <article className="survivor-card survivor-metric-card">
+          <div className="survivor-card-label">Rounds Processed</div>
+          <strong className="survivor-metric-value">{processedRoundCount}</strong>
+          <p className="survivor-card-description">Official tournament rounds already scored in the pool.</p>
         </article>
       </div>
 
@@ -42,8 +42,7 @@ export default function PoolDashboard({
             <ul className="survivor-player-list">
               {activePlayers.map((player) => (
                 <li className="survivor-player-row" key={player.id}>
-                  <span>{player.name}</span>
-                  <span className="survivor-status-chip">Active</span>
+                  <span className="survivor-player-name">{player.name}</span>
                 </li>
               ))}
             </ul>
@@ -58,7 +57,7 @@ export default function PoolDashboard({
             <ul className="survivor-player-list">
               {eliminatedPlayers.map((player) => (
                 <li className="survivor-player-row survivor-player-row-eliminated" key={player.id}>
-                  <span>{player.name}</span>
+                  <span className="survivor-player-name">{player.name}</span>
                   <span className="survivor-status-chip survivor-status-chip-danger">{player.eliminationReason || "Eliminated"}</span>
                 </li>
               ))}

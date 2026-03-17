@@ -2,6 +2,19 @@ function compactWhitespace(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function compactMatchupLabel(label) {
+  const normalized = compactWhitespace(label);
+  if (!normalized) return "";
+
+  return normalized
+    .replace(/\bFirst Round\b/i, "R1")
+    .replace(/\bSecond Round\b/i, "R2")
+    .replace(/\bSweet 16\b/i, "S16")
+    .replace(/\bElite 8\b/i, "E8")
+    .replace(/\bChampionship\b/i, "Title")
+    .replace(/\s+/g, " ");
+}
+
 function formatCommenceTime(value) {
   if (!value) return "";
 
@@ -45,8 +58,8 @@ function compactStatusDetail(game) {
 function getMatchupHeaderMeta(matchup, game) {
   if (!game) {
     return {
-      label: matchup.label,
-      detail: matchup.sublabel || "",
+      label: compactMatchupLabel(matchup.label),
+      detail: "",
     };
   }
 
@@ -65,7 +78,7 @@ function getMatchupHeaderMeta(matchup, game) {
   }
 
   return {
-    label: matchup.label,
+    label: compactMatchupLabel(matchup.label),
     detail: compactStatusDetail(game),
   };
 }
@@ -85,6 +98,7 @@ function getDisplayGameInfo(game) {
 export {
   compactStatusDetail,
   compactStatusLabel,
+  compactMatchupLabel,
   compactWhitespace,
   formatCommenceTime,
   getDisplayGameInfo,

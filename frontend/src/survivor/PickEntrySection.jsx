@@ -108,7 +108,7 @@ export default function PickEntrySection({
         <div>
           <div className="eyebrow">Current Round Picks</div>
           <h3>{roundContext?.tournamentLabel || "Official round loading"}</h3>
-          <p className="subtle">
+          <p className="survivor-section-description">
             {roundContext
               ? `Choose exactly ${roundContext.requiredPicks} team${roundContext.requiredPicks === 1 ? "" : "s"} from the official ${roundContext.tournamentLabel} field.`
               : "The official bracket feed has not loaded a current round yet."}
@@ -116,7 +116,7 @@ export default function PickEntrySection({
         </div>
       </div>
 
-      <div className="survivor-config-grid survivor-compact-controls">
+      <div className="survivor-config-grid survivor-compact-controls survivor-pick-controls">
         <label className="survivor-field">
           <span>Active Player</span>
           <select className="survivor-input" onChange={(event) => setSelectedPlayerId(event.target.value)} value={selectedPlayerId}>
@@ -138,15 +138,17 @@ export default function PickEntrySection({
 
       {roundContext ? (
         <div className="survivor-pick-summary survivor-pick-summary-sticky">
-          <span>
+          <span className="survivor-pick-summary-info">
             {selectedPlayer
               ? `${legalTeams.length} legal team${legalTeams.length === 1 ? "" : "s"} available. ${roundContext.unresolvedTeams.length ? `${roundContext.unresolvedTeams.length} play-in slot${roundContext.unresolvedTeams.length === 1 ? "" : "s"} still unresolved.` : ""}`
               : "Choose a player to unlock the team board."}
           </span>
-          <strong>
-            {selectedTeamIds.length}/{roundContext.requiredPicks} selected
+          <strong className="survivor-pick-summary-status">
+            {selectedTeamIds.length} / {roundContext.requiredPicks} selected
           </strong>
-          {currentPick ? <span className="subtle">Saved picks: {currentPick.teamIds.map((teamId) => teamNameLookup.get(teamId) || teamId).join(", ")}</span> : null}
+          {currentPick ? (
+            <span className="survivor-pick-summary-saved">Saved picks: {currentPick.teamIds.map((teamId) => teamNameLookup.get(teamId) || teamId).join(", ")}</span>
+          ) : null}
         </div>
       ) : null}
 
@@ -223,7 +225,7 @@ export default function PickEntrySection({
                   <div className="survivor-selected-pick-card" key={teamId}>
                     <div className="survivor-team-row">
                       <TeamLogo size="sm" team={team?.name || teamId} />
-                      <strong>{team?.name || teamId}</strong>
+                      <strong className="survivor-player-name">{team?.name || teamId}</strong>
                     </div>
                     <div className="subtle">{matchup?.label || "Official matchup"}</div>
                     <div className="survivor-game-meta">

@@ -63,8 +63,8 @@ export default function TeamCombobox({
 
   return (
     <div className="combobox-field">
-      <label>
-        {label}
+      <label className="combobox-label">
+        <span className="field-label">{label}</span>
         <div className={`combobox ${validationMessage ? "combobox-invalid" : ""}`}>
           <input
             ref={inputRef}

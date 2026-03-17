@@ -78,7 +78,7 @@ export default function LiveBracketPage() {
 
       <section className="live-bracket-summary">
         <div className="eyebrow">Feed Window</div>
-        <strong>{liveState?.label || (liveFeed.loading ? "Loading live feed..." : "Live feed unavailable")}</strong>
+        <strong className="live-bracket-summary-title">{liveState?.label || (liveFeed.loading ? "Loading live feed..." : "Live feed unavailable")}</strong>
         <span className="subtle">{liveState?.meta.helperText || "Loading official bracket feed."}</span>
         {liveState?.meta ? (
           <div className="live-feed-meta">

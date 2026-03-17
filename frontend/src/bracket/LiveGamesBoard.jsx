@@ -18,12 +18,12 @@ function ScheduleGame({ game }) {
       {roundInfo ? <div className="schedule-game-round">{roundInfo}</div> : null}
       <div className="ticker-team-row">
         <TeamLogo size="sm" team={displayGame.teamA} />
-        <span>{displayGame.teamA}</span>
+        <span className="ticker-team-name">{displayGame.teamA}</span>
         <strong>{displayGame.team_a_score ?? "-"}</strong>
       </div>
       <div className="ticker-team-row">
         <TeamLogo size="sm" team={displayGame.teamB} />
-        <span>{displayGame.teamB}</span>
+        <span className="ticker-team-name">{displayGame.teamB}</span>
         <strong>{displayGame.team_b_score ?? "-"}</strong>
       </div>
     </article>

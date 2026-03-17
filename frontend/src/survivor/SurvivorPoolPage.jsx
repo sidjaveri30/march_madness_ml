@@ -199,7 +199,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   return (
     <section className="mode-panel survivor-mode">
       <section className="survivor-hero">
-        <div>
+        <div className="survivor-hero-copy">
           <div className="eyebrow">Survivor Pool</div>
           <h2>March Madness survivor, driven by the official bracket</h2>
           <p className="subtle">

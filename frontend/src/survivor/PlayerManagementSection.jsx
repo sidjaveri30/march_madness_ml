@@ -21,13 +21,15 @@ export default function PlayerManagementSection({ onAddPlayer, onRemovePlayer, o
                 .filter((player) => !player.eliminated)
                 .map((player) => (
                   <div className="survivor-player-editor" key={player.id}>
-                    <input
-                      aria-label={`${player.name} name`}
-                      className="survivor-input"
-                      onChange={(event) => onRenamePlayer(player.id, event.target.value)}
-                      value={player.name}
-                    />
-                    <div className="survivor-inline-actions">
+                    <div className="survivor-player-editor-main">
+                      <input
+                        aria-label={`${player.name} name`}
+                        className="survivor-input"
+                        onChange={(event) => onRenamePlayer(player.id, event.target.value)}
+                        value={player.name}
+                      />
+                    </div>
+                    <div className="survivor-inline-actions survivor-inline-actions-tight">
                       <button className="secondary-button" onClick={() => onRemovePlayer(player.id)} type="button">
                         Remove
                       </button>
@@ -48,12 +50,14 @@ export default function PlayerManagementSection({ onAddPlayer, onRemovePlayer, o
                 .filter((player) => player.eliminated)
                 .map((player) => (
                   <div className="survivor-player-editor survivor-player-editor-eliminated" key={player.id}>
-                    <input
-                      aria-label={`${player.name} name`}
-                      className="survivor-input"
-                      onChange={(event) => onRenamePlayer(player.id, event.target.value)}
-                      value={player.name}
-                    />
+                    <div className="survivor-player-editor-main">
+                      <input
+                        aria-label={`${player.name} name`}
+                        className="survivor-input"
+                        onChange={(event) => onRenamePlayer(player.id, event.target.value)}
+                        value={player.name}
+                      />
+                    </div>
                     <span className="survivor-status-chip survivor-status-chip-danger">{player.eliminationReason || "Eliminated"}</span>
                   </div>
                 ))}

@@ -255,12 +255,12 @@ export default function PredictGamePage() {
                 <TeamLogo size="lg" team={result.predicted_winner} />
                 <h3>{result.predicted_winner}</h3>
               </div>
-              <p>
+              <p className="result-summary">
                 {result.team_a}: {formatPercent(result.win_probability_team_a)} | {result.team_b}:{" "}
                 {formatPercent(result.win_probability_team_b)}
               </p>
               {typeof result.predicted_margin === "number" ? (
-                <p>Projected margin from Team A perspective: {result.predicted_margin.toFixed(1)}</p>
+                <p className="result-summary">Projected margin from Team A perspective: {result.predicted_margin.toFixed(1)}</p>
               ) : null}
             </div>
             <div className="result-card">
@@ -273,8 +273,10 @@ export default function PredictGamePage() {
             </div>
           </section>
           <section className="predictor-market-section">
-            <div className="eyebrow">Market context</div>
-            <h3>Market context</h3>
+            <div className="predictor-market-header">
+              <div className="eyebrow">Market context</div>
+              <h3>Market context</h3>
+            </div>
             <MarketContextSection error={oddsError} loading={oddsLoading} odds={oddsContext} />
           </section>
         </>

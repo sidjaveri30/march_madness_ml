@@ -56,7 +56,7 @@ export default function EntryManager({
 
       <div className="entry-manager-row">
         <label className="entry-manager-field">
-          <span className="eyebrow">Entry Name</span>
+          <span className="field-label">Entry Name</span>
           <input className="entry-name-input" onChange={(event) => onRenameDraft(event.target.value)} type="text" value={draftName} />
         </label>
 

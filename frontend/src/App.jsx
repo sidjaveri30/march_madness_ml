@@ -14,18 +14,24 @@ const MODES = [
 
 export default function App() {
   const [mode, setMode] = useState("predict");
+  const activeMode = MODES.find((option) => option.id === mode);
 
   return (
     <main className="shell">
       <section className="app-header">
-        <div>
+        <div className="app-header-copy">
           <div className="eyebrow">March Madness ML</div>
           <h1>2026 tournament intelligence</h1>
           <p className="subtle">
             Predict individual games, manage your personal bracket entries, and track the official bracket separately as the tournament unfolds.
           </p>
         </div>
-        <div className="mode-switch" role="tablist">
+        <div className="app-header-actions">
+          <div className="app-active-mode-chip">
+            <span className="metric-label">Workspace</span>
+            <strong>{activeMode?.label}</strong>
+          </div>
+          <div className="mode-switch" role="tablist">
           {MODES.map((option) => (
             <button
               aria-selected={mode === option.id}
@@ -38,6 +44,7 @@ export default function App() {
               {option.label}
             </button>
           ))}
+          </div>
         </div>
       </section>
 

@@ -90,27 +90,27 @@ export default function MarketContextSection({ loading = false, error = "", odds
         <div className="eyebrow">Model vs Market</div>
         {odds.model_vs_market ? (
           <div className="market-summary">
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>{odds.team_a} model win probability</span>
               <strong>{formatPercent(odds.model_vs_market.model_win_prob_team_a)}</strong>
             </div>
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>{odds.team_a} market implied probability</span>
               <strong>{formatPercent(odds.model_vs_market.market_implied_prob_team_a)}</strong>
             </div>
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>Probability edge</span>
               <strong>{formatPercentPoints(odds.model_vs_market.moneyline_edge_points)}</strong>
             </div>
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>Model projected margin</span>
               <strong>{formatNumber(odds.model_vs_market.model_margin_team_a)}</strong>
             </div>
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>Consensus spread</span>
               <strong>{formatLine(odds.model_vs_market.market_spread_team_a)}</strong>
             </div>
-            <div className="market-summary-row">
+            <div className="market-summary-row market-summary-row-stat">
               <span>Spread difference</span>
               <strong>{formatNumber(odds.model_vs_market.spread_edge_points)}</strong>
             </div>
@@ -127,27 +127,27 @@ export default function MarketContextSection({ loading = false, error = "", odds
       <section className="modal-panel modal-panel-wide">
         <div className="eyebrow">Consensus Line</div>
         <div className="market-consensus-grid">
-          <div>
+          <div className="market-consensus-card">
             <span>{odds.team_a} implied probability</span>
             <strong>{formatPercent(odds.consensus.team_a_implied_prob_avg)}</strong>
           </div>
-          <div>
+          <div className="market-consensus-card">
             <span>{odds.team_b} implied probability</span>
             <strong>{formatPercent(odds.consensus.team_b_implied_prob_avg)}</strong>
           </div>
-          <div>
+          <div className="market-consensus-card">
             <span>{odds.team_a} average moneyline</span>
             <strong>{formatAmerican(odds.consensus.team_a_moneyline_avg)}</strong>
           </div>
-          <div>
+          <div className="market-consensus-card">
             <span>{odds.team_b} average moneyline</span>
             <strong>{formatAmerican(odds.consensus.team_b_moneyline_avg)}</strong>
           </div>
-          <div>
+          <div className="market-consensus-card">
             <span>{odds.team_a} spread</span>
             <strong>{formatLine(odds.consensus.spread_avg)}</strong>
           </div>
-          <div>
+          <div className="market-consensus-card">
             <span>Total</span>
             <strong>{formatNumber(odds.consensus.total_avg)}</strong>
           </div>

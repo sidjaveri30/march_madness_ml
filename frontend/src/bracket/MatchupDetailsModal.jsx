@@ -128,16 +128,16 @@ export default function MatchupDetailsModal({ matchup, teams, prediction, winner
             <div className="modal-panel">
               <div className="eyebrow">Model lean</div>
               <h4>{prediction.data.predicted_winner}</h4>
-              <div className="probability-row">
+              <div className="probability-row probability-row-stat">
                 <span>{prediction.data.team_a}</span>
                 <strong>{formatPercent(prediction.data.win_probability_team_a)}</strong>
               </div>
-              <div className="probability-row">
+              <div className="probability-row probability-row-stat">
                 <span>{prediction.data.team_b}</span>
                 <strong>{formatPercent(prediction.data.win_probability_team_b)}</strong>
               </div>
               {typeof prediction.data.predicted_margin === "number" ? (
-                <p>Projected margin: {prediction.data.predicted_margin.toFixed(1)}</p>
+                <p className="modal-supporting-copy">Projected margin: {prediction.data.predicted_margin.toFixed(1)}</p>
               ) : null}
             </div>
             <div className="modal-panel">
