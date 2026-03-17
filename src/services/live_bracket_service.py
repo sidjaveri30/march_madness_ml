@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 import requests
@@ -11,6 +11,78 @@ from src.utils.logging import get_logger
 from src.utils.team_names import normalizer
 
 logger = get_logger(__name__)
+
+TOURNAMENT_FIELD_TEAMS = {
+    "Duke",
+    "Siena",
+    "Ohio St.",
+    "TCU",
+    "St. John's",
+    "Northern Iowa",
+    "Kansas",
+    "Cal Baptist",
+    "Louisville",
+    "South Florida",
+    "Michigan St.",
+    "North Dakota St.",
+    "UCLA",
+    "UCF",
+    "UConn",
+    "Furman",
+    "Florida",
+    "Clemson",
+    "Iowa",
+    "Vanderbilt",
+    "McNeese",
+    "Nebraska",
+    "Troy",
+    "North Carolina",
+    "VCU",
+    "Illinois",
+    "Penn",
+    "Saint Mary's",
+    "Texas A&M",
+    "Houston",
+    "Idaho",
+    "Arizona",
+    "Long Island",
+    "Villanova",
+    "Utah St.",
+    "Wisconsin",
+    "High Point",
+    "Arkansas",
+    "Hawaii",
+    "BYU",
+    "Gonzaga",
+    "Kennesaw St.",
+    "Miami (FL)",
+    "Missouri",
+    "Purdue",
+    "Queens (N.C.)",
+    "Michigan",
+    "Georgia",
+    "Saint Louis",
+    "Texas Tech",
+    "Akron",
+    "Alabama",
+    "Hofstra",
+    "Tennessee",
+    "Virginia",
+    "Wright St.",
+    "Kentucky",
+    "Santa Clara",
+    "Iowa St.",
+    "Tennessee St.",
+    "Howard",
+    "UMBC",
+    "Texas",
+    "NC State",
+    "Prairie View A&M",
+    "Lehigh",
+    "Miami (Ohio)",
+    "SMU",
+}
+TOURNAMENT_FIELD_KEYS = {normalizer.resolve(team_name) for team_name in TOURNAMENT_FIELD_TEAMS}
 
 
 def _iso_now() -> str:
@@ -28,6 +100,10 @@ def _safe_int(value: object) -> int | None:
 
 def _canonical_team_display(value: str) -> str:
     return normalizer.display_name(value)
+
+
+def _is_tournament_team(value: str) -> bool:
+    return bool(value) and normalizer.resolve(value) in TOURNAMENT_FIELD_KEYS
 
 
 def _period_label(period: int | None) -> str:
@@ -256,20 +332,44 @@ class EspnLiveGameProvider:
         self.session = session or requests.Session()
 
     def fetch_games(self) -> list[LiveGame]:
-        response = self.session.get(
-            settings.espn_scoreboard_url,
-            params={"limit": 200, "groups": 50},
-            timeout=settings.live_request_timeout_seconds,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        events = payload.get("events", []) if isinstance(payload, dict) else []
+        events = self._fetch_scoreboard_events()
         games: list[LiveGame] = []
+        seen_game_ids: set[str] = set()
         for event in events:
             game = self._normalize_event(event)
-            if game:
+            if game and game.gameId not in seen_game_ids:
                 games.append(game)
+                seen_game_ids.add(game.gameId)
         return games
+
+    def _fetch_scoreboard_events(self) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
+        seen_event_ids: set[str] = set()
+        current_date = datetime.now(tz=UTC).date()
+
+        for day_offset in range(max(settings.espn_schedule_days_ahead, 1)):
+            target_date = current_date + timedelta(days=day_offset)
+            response = self.session.get(
+                settings.espn_scoreboard_url,
+                params={
+                    "limit": 200,
+                    "groups": 50,
+                    "dates": target_date.strftime("%Y%m%d"),
+                },
+                timeout=settings.live_request_timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            daily_events = payload.get("events", []) if isinstance(payload, dict) else []
+            for event in daily_events:
+                event_id = str(event.get("id") or "")
+                if event_id and event_id in seen_event_ids:
+                    continue
+                if event_id:
+                    seen_event_ids.add(event_id)
+                events.append(event)
+
+        return events
 
     def _normalize_event(self, event: dict[str, Any]) -> LiveGame | None:
         competition = ((event.get("competitions") or [None])[0]) or {}
@@ -285,6 +385,8 @@ class EspnLiveGameProvider:
         team_a_name = str((team_a.get("team") or {}).get("shortDisplayName") or (team_a.get("team") or {}).get("displayName") or "").strip()
         team_b_name = str((team_b.get("team") or {}).get("shortDisplayName") or (team_b.get("team") or {}).get("displayName") or "").strip()
         if not team_a_name or not team_b_name:
+            return None
+        if not (_is_tournament_team(team_a_name) and _is_tournament_team(team_b_name)):
             return None
 
         status, status_label, detail, period = _status_from_competition(competition.get("status", {}))

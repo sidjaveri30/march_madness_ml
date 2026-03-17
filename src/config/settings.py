@@ -44,6 +44,7 @@ class Settings(BaseSettings):
         default="https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard",
         alias="ESPN_SCOREBOARD_URL",
     )
+    espn_schedule_days_ahead: int = Field(default=2, alias="ESPN_SCHEDULE_DAYS_AHEAD")
 
     @property
     def raw_data_dir(self) -> Path:
