@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -48,6 +48,15 @@ describe("SurvivorPoolPage", () => {
     window.localStorage.clear();
   });
 
+  function getEnabledTeamButtons() {
+    return screen.getAllByRole("button").filter((button) => button.className.includes("survivor-team-tile") && !button.disabled);
+  }
+
+  async function addAndSelectFirstPlayer(user) {
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+  }
+
   it("renders the compact March Madness survivor experience and admin tools", () => {
     render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
 
@@ -61,11 +70,10 @@ describe("SurvivorPoolPage", () => {
     const user = userEvent.setup();
     render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
 
-    await user.click(screen.getByRole("button", { name: "Add Player" }));
-    expect(await screen.findByDisplayValue("Player 1")).toBeInTheDocument();
-    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+    await addAndSelectFirstPlayer(user);
+    expect(await screen.findByRole("textbox", { name: "Player 1 name" })).toBeInTheDocument();
 
-    const teamButtons = screen.getAllByRole("button").filter((button) => button.className.includes("survivor-team-tile") && !button.disabled);
+    const teamButtons = getEnabledTeamButtons();
     await user.click(teamButtons[0]);
     await user.click(teamButtons[1]);
     await user.click(teamButtons[2]);
@@ -81,10 +89,9 @@ describe("SurvivorPoolPage", () => {
     const user = userEvent.setup();
     render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ live: true })} />);
 
-    await user.click(screen.getByRole("button", { name: "Add Player" }));
-    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+    await addAndSelectFirstPlayer(user);
 
-    const teamButtons = screen.getAllByRole("button").filter((button) => button.className.includes("survivor-team-tile") && !button.disabled);
+    const teamButtons = getEnabledTeamButtons();
     await user.click(teamButtons[0]);
     await user.click(teamButtons[1]);
     await user.click(teamButtons[2]);
@@ -97,14 +104,70 @@ describe("SurvivorPoolPage", () => {
     const user = userEvent.setup();
     render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ started: true })} />);
 
-    await user.click(screen.getByRole("button", { name: "Add Player" }));
-    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+    await addAndSelectFirstPlayer(user);
 
-    expect(screen.getByText(/Picks are locked because Round of 64 has started/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Picks are locked because Round of 64 has started/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Save Round Picks" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Enable Admin Mode" }));
     expect(screen.getByText("Admin Override Enabled")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save Override Picks" })).not.toBeDisabled();
+  });
+
+  it("keeps unsaved draft picks visible while waiting and across rerenders", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await addAndSelectFirstPlayer(user);
+
+    const [firstTeamButton] = getEnabledTeamButtons();
+    await user.click(firstTeamButton);
+    expect(screen.getByText("1 / 3 selected")).toBeInTheDocument();
+
+    vi.useFakeTimers();
+    vi.advanceTimersByTime(15000);
+    rerender(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+    expect(screen.getByText("1 / 3 selected")).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("preserves draft picks across background live-feed updates when the teams stay valid", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await addAndSelectFirstPlayer(user);
+
+    const teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[0]);
+    await user.click(teamButtons[1]);
+    expect(screen.getByText("2 / 3 selected")).toBeInTheDocument();
+
+    rerender(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ live: true })} />);
+
+    expect(screen.getByText("2 / 3 selected")).toBeInTheDocument();
+  });
+
+  it("keeps separate draft picks by player until they are saved", async () => {
+    const user = userEvent.setup();
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+
+    let teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[0]);
+    expect(screen.getByText("1 / 3 selected")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 2" }));
+    expect(screen.getByText("0 / 3 selected")).toBeInTheDocument();
+
+    teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[1]);
+    await user.click(teamButtons[2]);
+    expect(screen.getByText("2 / 3 selected")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
+    expect(screen.getByText("1 / 3 selected")).toBeInTheDocument();
   });
 });

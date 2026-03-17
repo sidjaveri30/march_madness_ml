@@ -14,6 +14,7 @@ import {
   buildRoundContext,
   clearPlayerRoundPicks,
   createPlayer,
+  getLegalTeamOptionsForPlayer,
   getActivePlayers,
   getCurrentRoundContext,
   getEliminatedPlayers,
@@ -41,10 +42,19 @@ function createTeamLookup(definition, officialBracketState, gamesByMatchupId) {
   return lookup;
 }
 
+function createDraftKey(poolId, playerId, roundKey) {
+  if (!poolId || !playerId || !roundKey) return "";
+  return `${poolId}::${playerId}::${roundKey}`;
+}
+
+function sameTeamIds(left = [], right = []) {
+  return left.length === right.length && left.every((teamId, index) => teamId === right[index]);
+}
+
 export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const [pool, setPool] = useState(() => loadSurvivorPool());
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
-  const [selectedTeamIds, setSelectedTeamIds] = useState([]);
+  const [draftPickSelections, setDraftPickSelections] = useState({});
   const [pickError, setPickError] = useState("");
   const [resultsError, setResultsError] = useState("");
   const [resultsMessage, setResultsMessage] = useState("");
@@ -80,6 +90,21 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const activePlayers = useMemo(() => getActivePlayers(pool), [pool]);
   const eliminatedPlayers = useMemo(() => getEliminatedPlayers(pool), [pool]);
   const selectedPlayer = pool.players.find((player) => player.id === selectedPlayerId) || null;
+  const currentSavedPick = useMemo(
+    () => (selectedPlayer && currentRound ? getPlayerRoundPick(selectedPlayer, currentRound.roundKey) : null),
+    [currentRound, selectedPlayer],
+  );
+  const currentDraftKey = useMemo(
+    () => createDraftKey(pool.id, selectedPlayerId, currentRound?.roundKey),
+    [currentRound?.roundKey, pool.id, selectedPlayerId],
+  );
+  const selectedTeamIds = useMemo(() => {
+    if (!currentDraftKey) return [];
+    if (Object.prototype.hasOwnProperty.call(draftPickSelections, currentDraftKey)) {
+      return draftPickSelections[currentDraftKey];
+    }
+    return currentSavedPick?.teamIds || [];
+  }, [currentDraftKey, currentSavedPick, draftPickSelections]);
   const roundLock = useMemo(() => getRoundLockStatus(currentRound, new Date()), [currentRound]);
 
   useEffect(() => {
@@ -89,19 +114,48 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   }, [pool.players, selectedPlayerId]);
 
   useEffect(() => {
-    if (!selectedPlayerId || !currentRound) {
-      setSelectedTeamIds([]);
+    if (!currentDraftKey) {
+      setPickError("");
+      setResultsError("");
       return;
     }
-    const player = pool.players.find((entry) => entry.id === selectedPlayerId);
-    const savedPick = player ? getPlayerRoundPick(player, currentRound.roundKey) : null;
-    setSelectedTeamIds(savedPick?.teamIds || []);
     setPickError("");
     setResultsError("");
-  }, [currentRound?.roundKey, pool.players, selectedPlayerId]);
+  }, [currentDraftKey]);
+
+  useEffect(() => {
+    if (!currentDraftKey || !selectedPlayer || !currentRound) return;
+    const draftTeamIds = draftPickSelections[currentDraftKey];
+    if (!draftTeamIds) return;
+
+    const legalTeamIds = new Set(getLegalTeamOptionsForPlayer(selectedPlayer, currentRound).map((team) => team.id));
+    const nextDraftTeamIds = draftTeamIds.filter((teamId) => legalTeamIds.has(teamId));
+    if (sameTeamIds(draftTeamIds, nextDraftTeamIds)) return;
+
+    setDraftPickSelections((current) => ({
+      ...current,
+      [currentDraftKey]: nextDraftTeamIds,
+    }));
+    setPickError("Some draft picks were removed because they are no longer available for this round.");
+  }, [currentDraftKey, currentRound, draftPickSelections, selectedPlayer]);
 
   function updatePool(updater) {
     setPool((current) => (typeof updater === "function" ? updater(current) : updater));
+  }
+
+  function setSelectedTeamIds(updater) {
+    if (!currentDraftKey) return;
+    setDraftPickSelections((current) => {
+      const baseTeamIds = Object.prototype.hasOwnProperty.call(current, currentDraftKey) ? current[currentDraftKey] : currentSavedPick?.teamIds || [];
+      const nextTeamIds = typeof updater === "function" ? updater(baseTeamIds) : updater;
+      if (Object.prototype.hasOwnProperty.call(current, currentDraftKey) && sameTeamIds(baseTeamIds, nextTeamIds)) {
+        return current;
+      }
+      return {
+        ...current,
+        [currentDraftKey]: [...nextTeamIds],
+      };
+    });
   }
 
   function addPlayer() {
@@ -138,6 +192,13 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     }
 
     setPool(result.pool);
+    if (currentDraftKey) {
+      setDraftPickSelections((current) => {
+        const next = { ...current };
+        delete next[currentDraftKey];
+        return next;
+      });
+    }
     setPickError("");
     setResultsError("");
     setResultsMessage("Round picks saved.");
@@ -170,7 +231,13 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   function handleClearCurrentPicks() {
     if (!currentRound || !selectedPlayerId) return;
     setPool((current) => clearPlayerRoundPicks(current, selectedPlayerId, currentRound.roundKey));
-    setSelectedTeamIds([]);
+    if (currentDraftKey) {
+      setDraftPickSelections((current) => {
+        const next = { ...current };
+        delete next[currentDraftKey];
+        return next;
+      });
+    }
     setPickError("");
     setResultsMessage("Current round picks cleared for the selected player.");
   }
@@ -190,7 +257,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       return;
     }
     setPool((current) => resetPoolProgress(current));
-    setSelectedTeamIds([]);
+    setDraftPickSelections({});
     setPickError("");
     setResultsError("");
     setResultsMessage("Survivor Pool reset to Round of 64.");

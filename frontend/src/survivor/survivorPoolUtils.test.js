@@ -73,7 +73,8 @@ describe("survivorPoolUtils", () => {
 
     expect(roundContext.roundKey).toBe("firstRound");
     expect(roundContext.matchups.every((matchup) => matchup.round === "firstRound")).toBe(true);
-    expect(roundContext.availableTeams).toHaveLength(64);
+    expect(roundContext.availableTeams).toHaveLength(60);
+    expect(roundContext.unresolvedTeams).toHaveLength(4);
   });
 
   it("enforces the official pick requirements by round", () => {
