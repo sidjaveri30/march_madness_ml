@@ -41,9 +41,15 @@ const PREDICTION_TEAM_ALIASES = {
   "prairie view a m": "Prairie View A&M",
   "prairie view a&m": "Prairie View A&M",
   "queens (n c)": "Queens",
+  "queens (n c )": "Queens",
+  "queens (n.c.)": "Queens",
   "queens n c": "Queens",
   "queens nc": "Queens",
   queens: "Queens",
+  hawaii: "Hawaii",
+  "hawai i": "Hawaii",
+  "hawai i rainbow warriors": "Hawaii",
+  "hawaii rainbow warriors": "Hawaii",
   "texas a m": "Texas A&M",
   "texas a&m": "Texas A&M",
   byu: "BYU",
@@ -85,7 +91,45 @@ function buildPredictionNameLookup(teams) {
   return lookup;
 }
 
+function scorePredictionNameMatch(target, candidate) {
+  if (!target || !candidate) return 0;
+  if (target === candidate) return 1;
+  if (candidate.startsWith(target) || target.startsWith(candidate)) return 0.96;
+  if (candidate.includes(target) || target.includes(candidate)) return 0.91;
+
+  const targetTokens = new Set(target.split(" ").filter(Boolean));
+  const candidateTokens = new Set(candidate.split(" ").filter(Boolean));
+  const overlap = [...targetTokens].filter((token) => candidateTokens.has(token)).length;
+  const tokenScore = overlap / Math.max(targetTokens.size, candidateTokens.size, 1);
+  const lengthPenalty = Math.min(0.12, Math.abs(target.length - candidate.length) / 24);
+  return tokenScore - lengthPenalty;
+}
+
+function findClosestPredictionTeam(teamName, teams) {
+  const canonicalTarget = canonicalizeTeamName(teamName);
+  let bestMatch = null;
+  let bestScore = -Infinity;
+  let secondBestScore = -Infinity;
+
+  teams.forEach((team) => {
+    const score = scorePredictionNameMatch(canonicalTarget, canonicalizeTeamName(team));
+    if (score > bestScore) {
+      secondBestScore = bestScore;
+      bestScore = score;
+      bestMatch = team;
+    } else if (score > secondBestScore) {
+      secondBestScore = score;
+    }
+  });
+
+  if (bestScore >= 0.88 && bestScore - secondBestScore >= 0.04) {
+    return bestMatch;
+  }
+  return null;
+}
+
 const teamListCache = new Map();
+const teamSearchCache = new Map();
 
 async function loadPredictionTeams(apiUrl) {
   if (!teamListCache.has(apiUrl)) {
@@ -106,13 +150,31 @@ async function loadPredictionTeams(apiUrl) {
 }
 
 async function resolvePredictionTeamName(apiUrl, teamName) {
-  const { lookup } = await loadPredictionTeams(apiUrl);
+  const { teams, lookup } = await loadPredictionTeams(apiUrl);
   const canonical = canonicalizeTeamName(teamName);
   const resolved = lookup.get(canonical);
-  if (!resolved) {
-    throw new Error(`Unknown predictor team mapping: ${teamName}`);
+  if (resolved) {
+    return resolved;
   }
-  return resolved;
+  const fuzzyMatch = findClosestPredictionTeam(teamName, teams);
+  if (fuzzyMatch) return fuzzyMatch;
+  const searchCacheKey = `${apiUrl}__${canonical}`;
+  if (!teamSearchCache.has(searchCacheKey)) {
+    const params = new URLSearchParams({ q: teamName });
+    teamSearchCache.set(
+      searchCacheKey,
+      fetchJson(`${apiUrl}/teams/search?${params.toString()}`, {
+        errorMessage: "Could not search predictor teams.",
+      })
+        .then((payload) => payload?.exact_match || payload?.strong_match || null)
+        .catch(() => null),
+    );
+  }
+  const searchedMatch = await teamSearchCache.get(searchCacheKey);
+  if (typeof searchedMatch === "string" && searchedMatch.trim()) {
+    return searchedMatch;
+  }
+  throw new Error(`Unknown predictor team mapping: ${teamName}`);
 }
 
 function getBracketTeamNames(definition) {
@@ -151,6 +213,7 @@ async function validateBracketPredictionNames(apiUrl, definition) {
 
 function resetPredictionTeamCache() {
   teamListCache.clear();
+  teamSearchCache.clear();
 }
 
 export {
@@ -159,6 +222,7 @@ export {
   canonicalizeTeamName,
   getBracketTeamNames,
   loadPredictionTeams,
+  findClosestPredictionTeam,
   resetPredictionTeamCache,
   resolvePredictionTeamName,
   validateBracketPredictionNames,

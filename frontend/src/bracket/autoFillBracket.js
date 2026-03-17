@@ -11,10 +11,10 @@ function getPredictableTeamVariants(team) {
   return [];
 }
 
-async function getCachedPrediction(teamA, teamB, predictMatchup, cache) {
+async function getCachedPrediction(teamA, teamB, predictMatchup, cache, options = {}) {
   const key = `${teamA}__${teamB}`;
   if (!cache.has(key)) {
-    cache.set(key, Promise.resolve(predictMatchup(teamA, teamB)));
+    cache.set(key, Promise.resolve(predictMatchup(teamA, teamB, options)));
   }
   return cache.get(key);
 }
@@ -54,7 +54,12 @@ async function resolvePredictedWinner(teamA, teamB, predictMatchup, options = {}
         continue;
       }
 
-      const prediction = await getCachedPrediction(teamAName, teamBName, predictMatchup, cache);
+      const prediction = await getCachedPrediction(teamAName, teamBName, predictMatchup, cache, {
+        seedA: seedLookup.get(teamAName) || seedLookup.get(teamA),
+        seedB: seedLookup.get(teamBName) || seedLookup.get(teamB),
+        matchup,
+        mode,
+      });
       const probability =
         typeof prediction?.win_probability_team_a === "number"
           ? prediction.win_probability_team_a

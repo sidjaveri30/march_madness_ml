@@ -69,6 +69,9 @@ describe("MyBracketPage", () => {
     const user = userEvent.setup();
     render(<MyBracketPage />);
 
+    expect(screen.getByRole("option", { name: "Human" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Analyst" })).not.toBeInTheDocument();
+
     const dukeButton = within(screen.getByTestId("matchup-east_r1_1")).getByRole("button", { name: /Duke/i });
     await user.click(dukeButton);
     expect(dukeButton).toHaveClass("team-slot-selected");

@@ -68,4 +68,39 @@ describe("autoFillBracket", () => {
     expect(result.state.picks.south_r1_1).toBeTruthy();
     expect(result.state.picks.midwest_r1_1).toBeTruthy();
   });
+
+  it("still completes autofill when unsupported teams need seed-based fallback predictions", async () => {
+    const state = createBracketState(bracketDefinition);
+    const result = await autoFillBracket({
+      definition: bracketDefinition,
+      mode: "model",
+      overwrite: false,
+      predictMatchup: async (teamA, teamB, options = {}) => {
+        if (teamA === "Kansas" && teamB === "Cal Baptist") {
+          return {
+            team_a: teamA,
+            team_b: teamB,
+            predicted_winner: teamA,
+            win_probability_team_a: 0.92,
+            win_probability_team_b: 0.08,
+            top_reasons: ["Seed-based fallback used for this matchup."],
+            feature_snapshot: {},
+          };
+        }
+        return {
+          team_a: teamA,
+          team_b: teamB,
+          predicted_winner: Number(options.seedA) <= Number(options.seedB) ? teamA : teamB,
+          win_probability_team_a: Number(options.seedA) <= Number(options.seedB) ? 0.7 : 0.3,
+          win_probability_team_b: Number(options.seedA) <= Number(options.seedB) ? 0.3 : 0.7,
+          top_reasons: [],
+          feature_snapshot: {},
+        };
+      },
+      state,
+    });
+
+    expect(result.state.picks.east_r1_4).toBe("Kansas");
+    expect(result.filledMatchups).toBeGreaterThan(0);
+  });
 });

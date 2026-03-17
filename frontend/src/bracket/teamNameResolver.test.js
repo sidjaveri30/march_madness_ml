@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { bracketDefinition } from "./bracketDefinition";
 import {
   buildPredictionNameLookup,
+  findClosestPredictionTeam,
   getBracketTeamNames,
   resolvePredictionTeamName,
   resetPredictionTeamCache,
@@ -24,6 +25,7 @@ describe("teamNameResolver", () => {
     "Texas A&M",
     "Prairie View A&M",
     "Queens",
+    "Hawaii",
     "Kennesaw St.",
     "Wright St.",
     "Connecticut",
@@ -51,6 +53,8 @@ describe("teamNameResolver", () => {
     await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Miami (Ohio)")).resolves.toBe("Miami OH");
     await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Long Island")).resolves.toBe("LIU");
     await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Saint Mary's")).resolves.toBe("Saint Mary's");
+    await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Hawai'i")).resolves.toBe("Hawaii");
+    await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Queens (N.C.)")).resolves.toBe("Queens");
   });
 
   it("builds a lookup that includes explicit aliases without inventing missing predictor names", () => {
@@ -61,6 +65,39 @@ describe("teamNameResolver", () => {
 
     const missingLookup = buildPredictionNameLookup(["Ohio St."]);
     expect(missingLookup.get("cal baptist")).toBeUndefined();
+  });
+
+  it("uses a stable fuzzy fallback when punctuation or naming variants differ", async () => {
+    resetPredictionTeamCache();
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => ({ teams: predictorTeams }),
+    });
+
+    expect(findClosestPredictionTeam("Queens (N.C.)", predictorTeams)).toBe("Queens");
+    await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Queens (N.C.)")).resolves.toBe("Queens");
+  });
+
+  it("falls back to backend team search before throwing an unknown-team error", async () => {
+    resetPredictionTeamCache();
+    global.fetch = async (url) => {
+      if (String(url).includes("/teams/search?")) {
+        return {
+          ok: true,
+          json: async () => ({
+            exact_match: null,
+            strong_match: "Tennessee State",
+            matches: ["Tennessee State"],
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ teams: ["Duke", "Siena"] }),
+      };
+    };
+
+    await expect(resolvePredictionTeamName("http://127.0.0.1:8000", "Tennessee St.")).resolves.toBe("Tennessee State");
   });
 
   it("validates every bracket team against predictor names", async () => {

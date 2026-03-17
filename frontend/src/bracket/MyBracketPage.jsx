@@ -170,10 +170,10 @@ export default function MyBracketPage() {
     flashStatus("Entry deleted.");
   }
 
-  async function getAutoFillPrediction(teamA, teamB) {
+  async function getAutoFillPrediction(teamA, teamB, options = {}) {
     const key = createExactPredictionKey(teamA, teamB);
     if (!autoFillPredictionCacheRef.current.has(key)) {
-      autoFillPredictionCacheRef.current.set(key, fetchMatchupPrediction(API_URL, teamA, teamB));
+      autoFillPredictionCacheRef.current.set(key, fetchMatchupPrediction(API_URL, teamA, teamB, options));
     }
     return autoFillPredictionCacheRef.current.get(key);
   }

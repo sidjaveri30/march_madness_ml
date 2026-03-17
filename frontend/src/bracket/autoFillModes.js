@@ -2,17 +2,17 @@ const AUTO_FILL_MODE_DETAILS = {
   chalk: {
     id: "chalk",
     label: "Chalk",
-    description: "Mostly favorites with only a few close-call upsets.",
+    description: "Mostly favorites.",
   },
   model: {
     id: "model",
     label: "Model",
-    description: "Sampled directly from the model win probabilities.",
+    description: "Strict highest-probability picks.",
   },
-  analyst: {
-    id: "analyst",
-    label: "Analyst",
-    description: "Model-driven with smart seed-line and matchup nudges.",
+  human: {
+    id: "human",
+    label: "Human",
+    description: "Realistic smart-fan bracket.",
   },
   random: {
     id: "random",
@@ -22,7 +22,7 @@ const AUTO_FILL_MODE_DETAILS = {
   chaos: {
     id: "chaos",
     label: "Chaos",
-    description: "Upset-heavy, especially in early-round danger zones.",
+    description: "Upset-heavy but still plausible.",
   },
 };
 
@@ -31,6 +31,10 @@ const DEFAULT_AUTO_FILL_MODE = "model";
 
 function clampProbability(value) {
   return Math.min(0.995, Math.max(0.005, value));
+}
+
+function clampRange(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function getRoundIndex(round) {
@@ -88,7 +92,7 @@ function nudgeTowardUnderdog(probabilityTeamA, underdogBonus) {
   return clampProbability(probabilityTeamA + (favoriteIsA ? -underdogBonus : underdogBonus));
 }
 
-function buildAnalystAdjustment({ baseProbability, matchup, seedA, seedB, prediction }) {
+function buildHumanAdjustment({ baseProbability, matchup, seedA, seedB, prediction }) {
   const roundIndex = getRoundIndex(matchup?.round);
   const closeness = 1 - Math.min(1, Math.abs(baseProbability - 0.5) / 0.24);
   const { favoriteSeed, underdogSeed } = getUnderdogContext(seedA, seedB, baseProbability);
@@ -121,8 +125,61 @@ function buildAnalystAdjustment({ baseProbability, matchup, seedA, seedB, predic
     adjustment += 0.01;
   }
 
-  const maxAdjustment = [0.085, 0.06, 0.04, 0.03, 0.02, 0.015][roundIndex] ?? 0.02;
+  if (baseProbability > 0.9 || baseProbability < 0.1) {
+    adjustment *= 0.25;
+  } else if (baseProbability > 0.82 || baseProbability < 0.18) {
+    adjustment *= 0.55;
+  }
+
+  const maxAdjustment = [0.07, 0.05, 0.032, 0.022, 0.016, 0.012][roundIndex] ?? 0.016;
   return Math.max(-maxAdjustment, Math.min(maxAdjustment, adjustment));
+}
+
+function buildChaosProbability({ baseProbability, matchup, seedA, seedB }) {
+  const roundIndex = getRoundIndex(matchup?.round);
+  const { favoriteSeed, underdogSeed, seedGap } = getUnderdogContext(seedA, seedB, baseProbability);
+  const classicUpset = isClassicUpsetSpot(favoriteSeed, underdogSeed);
+  const flattenFactor = [0.5, 0.58, 0.68, 0.76, 0.82, 0.88][roundIndex] ?? 0.88;
+  const closeness = 1 - Math.min(1, Math.abs(baseProbability - 0.5) / 0.28);
+
+  let probability = 0.5 + (baseProbability - 0.5) * flattenFactor;
+  let underdogBonus = [0.06, 0.045, 0.03, 0.02, 0.012, 0.008][roundIndex] ?? 0.008;
+  if (classicUpset) underdogBonus += 0.035;
+  if (typeof seedGap === "number" && seedGap >= 5) underdogBonus += 0.015;
+  if (typeof seedGap === "number" && seedGap >= 8) underdogBonus -= 0.015;
+  if (closeness > 0.45) underdogBonus += 0.015;
+
+  probability = nudgeTowardUnderdog(probability, underdogBonus);
+
+  const favoriteProbability = Math.max(probability, 1 - probability);
+  const favoriteCap =
+    favoriteProbability >= 0.95 ? 0.9
+    : favoriteProbability >= 0.9 ? 0.84
+    : favoriteProbability >= 0.82 ? 0.76
+    : 0.67;
+
+  if (probability > 0.5) {
+    return clampRange(probability, 1 - favoriteCap, favoriteCap);
+  }
+  return clampRange(probability, 1 - favoriteCap, favoriteCap);
+}
+
+function getDeterministicWinner({ prediction, seedA, seedB, teamA, teamB }) {
+  const probabilityTeamA = getBaseProbability(prediction, teamA);
+  if (probabilityTeamA > 0.5) return { winner: teamA, probabilityTeamA };
+  if (probabilityTeamA < 0.5) return { winner: teamB, probabilityTeamA };
+
+  if (prediction?.predicted_winner === teamA || prediction?.predicted_winner === teamB) {
+    return { winner: prediction.predicted_winner, probabilityTeamA };
+  }
+
+  const numericSeedA = Number(seedA);
+  const numericSeedB = Number(seedB);
+  if (Number.isFinite(numericSeedA) && Number.isFinite(numericSeedB) && numericSeedA !== numericSeedB) {
+    return { winner: numericSeedA < numericSeedB ? teamA : teamB, probabilityTeamA };
+  }
+
+  return { winner: String(teamA).localeCompare(String(teamB)) <= 0 ? teamA : teamB, probabilityTeamA };
 }
 
 function getModeProbability({ mode, prediction, matchup, seedA, seedB, teamA }) {
@@ -135,23 +192,18 @@ function getModeProbability({ mode, prediction, matchup, seedA, seedB, teamA }) 
   switch (mode) {
     case "random":
       return 0.5;
+    case "model":
+      return baseProbability;
     case "chalk": {
       const roundLean = [0.8, 0.65, 0.5, 0.4, 0.3, 0.25][roundIndex] ?? 0.25;
       const upsetBrake = classicUpset ? 0.18 : 0;
       const closeBrake = closeness > 0.7 ? 0.16 : closeness > 0.45 ? 0.08 : 0;
       return moveTowardFavorite(baseProbability, Math.max(0.05, roundLean - upsetBrake - closeBrake));
     }
-    case "chaos": {
-      let probability = 0.5 + (baseProbability - 0.5) * ([0.32, 0.42, 0.56, 0.68, 0.78, 0.84][roundIndex] ?? 0.84);
-      let upsetBonus = [0.12, 0.09, 0.06, 0.045, 0.03, 0.02][roundIndex] ?? 0.02;
-      if (classicUpset) upsetBonus += 0.05;
-      if (typeof seedGap === "number" && seedGap >= 6) upsetBonus += 0.02;
-      if (closeness > 0.45) upsetBonus += 0.02;
-      probability = nudgeTowardUnderdog(probability, upsetBonus);
-      return clampProbability(probability);
-    }
-    case "analyst": {
-      const adjustment = buildAnalystAdjustment({
+    case "chaos":
+      return buildChaosProbability({ baseProbability, matchup, seedA, seedB });
+    case "human": {
+      const adjustment = buildHumanAdjustment({
         baseProbability,
         matchup,
         seedA,
@@ -160,7 +212,6 @@ function getModeProbability({ mode, prediction, matchup, seedA, seedB, teamA }) 
       });
       return clampProbability(nudgeTowardUnderdog(baseProbability, adjustment));
     }
-    case "model":
     default:
       return baseProbability;
   }
@@ -176,6 +227,9 @@ function chooseWinnerByMode({
   teamA,
   teamB,
 }) {
+  if (mode === "model") {
+    return getDeterministicWinner({ prediction, seedA, seedB, teamA, teamB });
+  }
   const probabilityTeamA = getModeProbability({
     mode,
     prediction,
