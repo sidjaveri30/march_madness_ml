@@ -46,6 +46,7 @@ function buildLiveFeedOverride({ live = false, resolvedFirstRound = false, start
 describe("SurvivorPoolPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.restoreAllMocks();
   });
 
   function getEnabledTeamButtons() {
@@ -61,6 +62,7 @@ describe("SurvivorPoolPage", () => {
     render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
 
     expect(screen.getByText("March Madness survivor, driven by the official bracket")).toBeInTheDocument();
+    expect(screen.getByText("Survivor Pools")).toBeInTheDocument();
     expect(screen.getByText("Compact team board")).toBeInTheDocument();
     expect(screen.getByText("Admin Tools")).toBeInTheDocument();
     expect(screen.queryByText("Create / Configure Pool")).not.toBeInTheDocument();
@@ -169,5 +171,76 @@ describe("SurvivorPoolPage", () => {
 
     await user.selectOptions(screen.getAllByRole("combobox")[0], screen.getByRole("option", { name: "Player 1" }));
     expect(screen.getByText("1 / 3 selected")).toBeInTheDocument();
+  });
+
+  it("creates multiple survivor pools and keeps their players separate", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "prompt").mockReturnValueOnce("Friends Pool").mockReturnValueOnce("Family Pool");
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    expect(screen.getByRole("textbox", { name: "Player 1 name" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    expect(screen.getByRole("tab", { name: /Family Pool/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("textbox", { name: "Player 1 name" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Friends Pool/i }));
+    expect(screen.getByRole("textbox", { name: "Player 1 name" })).toBeInTheDocument();
+  });
+
+  it("keeps picks independent per pool and preserves the active pool across refresh", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "prompt").mockReturnValueOnce("Friends Pool").mockReturnValueOnce("Office Pool");
+    const { rerender } = render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    await addAndSelectFirstPlayer(user);
+    let teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[0]);
+    await user.click(teamButtons[1]);
+    await user.click(teamButtons[2]);
+    await user.click(screen.getByRole("button", { name: "Save Round Picks" }));
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    await addAndSelectFirstPlayer(user);
+    teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[3]);
+    await user.click(teamButtons[4]);
+    await user.click(teamButtons[5]);
+    await user.click(screen.getByRole("button", { name: "Save Round Picks" }));
+
+    rerender(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+    expect(screen.getByRole("tab", { name: /Office Pool/i })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(/Saved picks:/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Friends Pool/i }));
+    expect(screen.getByText(/Saved picks:/i)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Friends Pool/i })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("resets and deletes only the active survivor pool", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "prompt").mockReturnValueOnce("Friends Pool").mockReturnValueOnce("Office Pool");
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    expect(screen.getByRole("textbox", { name: "Player 1 name" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "+ New Pool" }));
+    await user.click(screen.getByRole("button", { name: "Add Player" }));
+    await user.click(screen.getByRole("button", { name: "Reset Pool" }));
+    expect(confirmSpy).toHaveBeenCalled();
+
+    await user.click(screen.getByRole("tab", { name: /Friends Pool/i }));
+    expect(screen.getByRole("textbox", { name: "Player 1 name" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Office Pool/i }));
+    await user.click(screen.getByRole("button", { name: "Delete Pool" }));
+    expect(screen.queryByRole("tab", { name: /Office Pool/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Friends Pool/i })).toBeInTheDocument();
   });
 });

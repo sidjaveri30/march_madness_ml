@@ -8,12 +8,25 @@ import PlayerManagementSection from "./PlayerManagementSection";
 import PickEntrySection from "./PickEntrySection";
 import PoolDashboard from "./PoolDashboard";
 import ResultsProcessorSection from "./ResultsProcessorSection";
-import { loadSurvivorPool, saveSurvivorPool } from "./survivorPoolStorage.js";
+import SurvivorPoolManager from "./SurvivorPoolManager";
+import {
+  addSurvivorPool,
+  createPoolName,
+  createSurvivorPoolEntry,
+  deleteSurvivorPool,
+  getActiveSurvivorPoolEntry,
+  loadSurvivorPoolWorkspace,
+  renameSurvivorPool,
+  saveSurvivorPoolWorkspace,
+  setActiveSurvivorPool,
+  updateSurvivorPoolEntry,
+} from "./survivorPoolStorage.js";
 import {
   SURVIVOR_ROUND_CONFIG,
   buildRoundContext,
   clearPlayerRoundPicks,
   createPlayer,
+  createPool,
   getLegalTeamOptionsForPlayer,
   getActivePlayers,
   getCurrentRoundContext,
@@ -52,14 +65,11 @@ function sameTeamIds(left = [], right = []) {
 }
 
 export default function SurvivorPoolPage({ liveFeedOverride = null }) {
-  const [pool, setPool] = useState(() => loadSurvivorPool());
-  const [selectedPlayerId, setSelectedPlayerId] = useState("");
-  const [draftPickSelections, setDraftPickSelections] = useState({});
+  const [workspace, setWorkspace] = useState(() => loadSurvivorPoolWorkspace());
+  const [poolNameDraft, setPoolNameDraft] = useState("");
   const [pickError, setPickError] = useState("");
   const [resultsError, setResultsError] = useState("");
   const [resultsMessage, setResultsMessage] = useState("");
-  const [rollbackRoundKey, setRollbackRoundKey] = useState("");
-  const [adminMode, setAdminMode] = useState(false);
   const liveFeedFromStore = useLiveBracketFeed({ definition: bracketDefinition, disabled: Boolean(liveFeedOverride) });
   const liveFeed = liveFeedOverride || liveFeedFromStore;
   const fallbackBracketState = useMemo(() => createBracketState(bracketDefinition), []);
@@ -67,12 +77,27 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const officialBracketState = liveFeed.view?.bracketState || fallbackBracketState;
   const gamesByMatchupId = liveFeed.view?.games || emptyGamesByMatchupId;
 
-  useEffect(() => {
-    saveSurvivorPool(pool);
-  }, [pool]);
+  const activePoolEntry = useMemo(() => getActiveSurvivorPoolEntry(workspace), [workspace]);
+  const pool = activePoolEntry?.pool || createPool();
+  const selectedPlayerId = activePoolEntry?.ui?.selectedPlayerId || "";
+  const rollbackRoundKey = activePoolEntry?.ui?.rollbackRoundKey || "";
+  const adminMode = Boolean(activePoolEntry?.ui?.adminMode);
+  const draftPickSelections = activePoolEntry?.draftPicks || {};
+  const poolEntries = useMemo(
+    () => workspace.survivorPoolOrder.map((poolId) => workspace.survivorPoolsById[poolId]).filter(Boolean),
+    [workspace],
+  );
 
   useEffect(() => {
-    setPool((current) => recomputePoolState(current, bracketDefinition, officialBracketState, gamesByMatchupId));
+    saveSurvivorPoolWorkspace(workspace);
+  }, [workspace]);
+
+  useEffect(() => {
+    setWorkspace((current) =>
+      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => ({
+        pool: recomputePoolState(entry.pool, bracketDefinition, officialBracketState, gamesByMatchupId),
+      })),
+    );
   }, [officialBracketState, gamesByMatchupId]);
 
   const currentRound = useMemo(
@@ -108,9 +133,22 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   const roundLock = useMemo(() => getRoundLockStatus(currentRound, new Date()), [currentRound]);
 
   useEffect(() => {
+    setPoolNameDraft(activePoolEntry?.name || "");
+  }, [activePoolEntry?.id, activePoolEntry?.name]);
+
+  useEffect(() => {
     if (selectedPlayerId && pool.players.some((player) => player.id === selectedPlayerId && !player.eliminated)) return;
     const nextPlayer = pool.players.find((player) => !player.eliminated);
-    setSelectedPlayerId(nextPlayer?.id || "");
+    const nextSelectedPlayerId = nextPlayer?.id || "";
+    if (nextSelectedPlayerId === selectedPlayerId) return;
+    setWorkspace((current) =>
+      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => ({
+        ui: {
+          ...entry.ui,
+          selectedPlayerId: nextSelectedPlayerId,
+        },
+      })),
+    );
   }, [pool.players, selectedPlayerId]);
 
   useEffect(() => {
@@ -132,28 +170,67 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     const nextDraftTeamIds = draftTeamIds.filter((teamId) => legalTeamIds.has(teamId));
     if (sameTeamIds(draftTeamIds, nextDraftTeamIds)) return;
 
-    setDraftPickSelections((current) => ({
-      ...current,
-      [currentDraftKey]: nextDraftTeamIds,
-    }));
+    setWorkspace((current) =>
+      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => ({
+        draftPicks: {
+          ...entry.draftPicks,
+          [currentDraftKey]: nextDraftTeamIds,
+        },
+      })),
+    );
     setPickError("Some draft picks were removed because they are no longer available for this round.");
   }, [currentDraftKey, currentRound, draftPickSelections, selectedPlayer]);
 
+  function updateActivePoolEntry(updater) {
+    setWorkspace((current) => updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, updater));
+  }
+
   function updatePool(updater) {
-    setPool((current) => (typeof updater === "function" ? updater(current) : updater));
+    updateActivePoolEntry((entry) => ({
+      pool: typeof updater === "function" ? updater(entry.pool) : updater,
+    }));
+  }
+
+  function setSelectedPlayerId(nextPlayerId) {
+    updateActivePoolEntry((entry) => ({
+      ui: {
+        ...entry.ui,
+        selectedPlayerId: nextPlayerId,
+      },
+    }));
+  }
+
+  function setRollbackRoundKey(nextRoundKey) {
+    updateActivePoolEntry((entry) => ({
+      ui: {
+        ...entry.ui,
+        rollbackRoundKey: nextRoundKey,
+      },
+    }));
+  }
+
+  function setAdminMode(updater) {
+    updateActivePoolEntry((entry) => ({
+      ui: {
+        ...entry.ui,
+        adminMode: typeof updater === "function" ? updater(Boolean(entry.ui?.adminMode)) : Boolean(updater),
+      },
+    }));
   }
 
   function setSelectedTeamIds(updater) {
     if (!currentDraftKey) return;
-    setDraftPickSelections((current) => {
-      const baseTeamIds = Object.prototype.hasOwnProperty.call(current, currentDraftKey) ? current[currentDraftKey] : currentSavedPick?.teamIds || [];
+    updateActivePoolEntry((entry) => {
+      const baseTeamIds = Object.prototype.hasOwnProperty.call(entry.draftPicks, currentDraftKey) ? entry.draftPicks[currentDraftKey] : currentSavedPick?.teamIds || [];
       const nextTeamIds = typeof updater === "function" ? updater(baseTeamIds) : updater;
-      if (Object.prototype.hasOwnProperty.call(current, currentDraftKey) && sameTeamIds(baseTeamIds, nextTeamIds)) {
-        return current;
+      if (Object.prototype.hasOwnProperty.call(entry.draftPicks, currentDraftKey) && sameTeamIds(baseTeamIds, nextTeamIds)) {
+        return {};
       }
       return {
-        ...current,
-        [currentDraftKey]: [...nextTeamIds],
+        draftPicks: {
+          ...entry.draftPicks,
+          [currentDraftKey]: [...nextTeamIds],
+        },
       };
     });
   }
@@ -179,6 +256,40 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     }));
   }
 
+  function handleCreatePool() {
+    const requestedName = window.prompt("Name the new Survivor Pool.", createPoolName(poolEntries.length + 1));
+    const nextName = requestedName?.trim() || createPoolName(poolEntries.length + 1);
+    const nextPool = createPool({ name: nextName });
+    const nextEntry = createSurvivorPoolEntry({
+      id: nextPool.id,
+      name: nextName,
+      pool: nextPool,
+      draftPicks: {},
+    });
+    setWorkspace((current) => addSurvivorPool(current, nextEntry));
+    setPickError("");
+    setResultsError("");
+    setResultsMessage(`Created ${nextName}.`);
+  }
+
+  function handleRenamePool() {
+    const nextName = poolNameDraft.trim();
+    if (!nextName || !activePoolEntry) return;
+    setWorkspace((current) => renameSurvivorPool(current, activePoolEntry.id, nextName));
+    setResultsMessage("Pool renamed.");
+  }
+
+  function handleDeletePool() {
+    if (!activePoolEntry) return;
+    if (!window.confirm(`Delete ${activePoolEntry.name}? This only removes this Survivor Pool.`)) {
+      return;
+    }
+    setWorkspace((current) => deleteSurvivorPool(current, activePoolEntry.id));
+    setPickError("");
+    setResultsError("");
+    setResultsMessage(`Deleted ${activePoolEntry.name}.`);
+  }
+
   function handleSubmitPicks() {
     if (!currentRound) {
       setPickError("The official tournament round has not loaded yet.");
@@ -191,14 +302,16 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       return;
     }
 
-    setPool(result.pool);
-    if (currentDraftKey) {
-      setDraftPickSelections((current) => {
-        const next = { ...current };
-        delete next[currentDraftKey];
-        return next;
-      });
-    }
+    updateActivePoolEntry((entry) => {
+      const nextDraftPicks = { ...entry.draftPicks };
+      if (currentDraftKey) {
+        delete nextDraftPicks[currentDraftKey];
+      }
+      return {
+        pool: result.pool,
+        draftPicks: nextDraftPicks,
+      };
+    });
     setPickError("");
     setResultsError("");
     setResultsMessage("Round picks saved.");
@@ -222,7 +335,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
       return;
     }
 
-    setPool(result.pool);
+    updatePool(result.pool);
     setResultsError("");
     setPickError("");
     setResultsMessage(currentRound.roundKey === "championship" ? "Championship results processed." : `${currentRound.tournamentLabel} results processed.`);
@@ -230,22 +343,29 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
 
   function handleClearCurrentPicks() {
     if (!currentRound || !selectedPlayerId) return;
-    setPool((current) => clearPlayerRoundPicks(current, selectedPlayerId, currentRound.roundKey));
-    if (currentDraftKey) {
-      setDraftPickSelections((current) => {
-        const next = { ...current };
-        delete next[currentDraftKey];
-        return next;
-      });
-    }
+    updateActivePoolEntry((entry) => {
+      const nextDraftPicks = { ...entry.draftPicks };
+      if (currentDraftKey) {
+        delete nextDraftPicks[currentDraftKey];
+      }
+      return {
+        pool: clearPlayerRoundPicks(entry.pool, selectedPlayerId, currentRound.roundKey),
+        draftPicks: nextDraftPicks,
+      };
+    });
     setPickError("");
     setResultsMessage("Current round picks cleared for the selected player.");
   }
 
   function handleRollbackRound() {
     if (!rollbackRoundKey) return;
-    setPool((current) => rollbackPoolToRound(current, rollbackRoundKey, bracketDefinition, officialBracketState, gamesByMatchupId));
-    setRollbackRoundKey("");
+    updateActivePoolEntry((entry) => ({
+      pool: rollbackPoolToRound(entry.pool, rollbackRoundKey, bracketDefinition, officialBracketState, gamesByMatchupId),
+      ui: {
+        ...entry.ui,
+        rollbackRoundKey: "",
+      },
+    }));
     setPickError("");
     setResultsError("");
     const label = SURVIVOR_ROUND_CONFIG.find((round) => round.roundKey === rollbackRoundKey)?.tournamentLabel || rollbackRoundKey;
@@ -253,11 +373,17 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   }
 
   function handleResetPool() {
-    if (!window.confirm("Reset the Survivor Pool? This clears every pick, elimination, and processed round while keeping the player list.")) {
+    if (!window.confirm(`Reset ${pool.name}? This clears every pick, elimination, and processed round while keeping the player list.`)) {
       return;
     }
-    setPool((current) => resetPoolProgress(current));
-    setDraftPickSelections({});
+    updateActivePoolEntry((entry) => ({
+      pool: resetPoolProgress(entry.pool),
+      draftPicks: {},
+      ui: {
+        ...entry.ui,
+        rollbackRoundKey: "",
+      },
+    }));
     setPickError("");
     setResultsError("");
     setResultsMessage("Survivor Pool reset to Round of 64.");
@@ -270,19 +396,19 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
           <div className="eyebrow">Survivor Pool</div>
           <h2>March Madness survivor, driven by the official bracket</h2>
           <p className="subtle">
-            Add players, pick surviving teams from the official bracket, and use host controls to correct mistakes without touching localStorage manually.
+            Create multiple pools, manage separate player groups, and score each pool against the same official March Madness bracket.
           </p>
           {adminMode ? <div className="save-status">Admin Override Enabled: round locks can be bypassed for corrections.</div> : null}
           {liveFeed.error ? <div className="inline-error">{liveFeed.error}</div> : null}
         </div>
         <div className="survivor-hero-meta">
           <div className="champion-chip">
-            <span className="metric-label">Current Round</span>
-            <strong>{currentRound?.tournamentLabel || "Tournament complete"}</strong>
+            <span className="metric-label">Active Pool</span>
+            <strong>{pool.name}</strong>
           </div>
           <div className="champion-chip">
-            <span className="metric-label">Picks This Round</span>
-            <strong>{currentRound?.requiredPicks ?? 0}</strong>
+            <span className="metric-label">Current Round</span>
+            <strong>{currentRound?.tournamentLabel || "Tournament complete"}</strong>
           </div>
           <div className="champion-chip">
             <span className="metric-label">Official Feed</span>
@@ -290,6 +416,18 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
           </div>
         </div>
       </section>
+
+      <SurvivorPoolManager
+        activePool={activePoolEntry}
+        activePoolId={workspace.activeSurvivorPoolId}
+        draftName={poolNameDraft}
+        onCreatePool={handleCreatePool}
+        onDeletePool={handleDeletePool}
+        onRenameDraft={setPoolNameDraft}
+        onRenamePool={handleRenamePool}
+        onSelectPool={(poolId) => setWorkspace((current) => setActiveSurvivorPool(current, poolId))}
+        pools={poolEntries}
+      />
 
       <PoolDashboard
         activePlayers={activePlayers}

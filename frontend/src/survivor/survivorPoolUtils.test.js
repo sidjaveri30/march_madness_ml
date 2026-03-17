@@ -2,7 +2,19 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { bracketDefinition, getAllMatchups } from "../bracket/bracketDefinition";
 import { applyWinnerPick, createBracketState, getMatchupTeams } from "../bracket/bracketState";
-import { clearSurvivorPool, loadSurvivorPool, saveSurvivorPool } from "./survivorPoolStorage.js";
+import {
+  addSurvivorPool,
+  clearSurvivorPool,
+  createSurvivorPoolEntry,
+  createSurvivorPoolWorkspace,
+  getActiveSurvivorPoolEntry,
+  loadSurvivorPool,
+  loadSurvivorPoolWorkspace,
+  renameSurvivorPool,
+  saveSurvivorPool,
+  saveSurvivorPoolWorkspace,
+  setActiveSurvivorPool,
+} from "./survivorPoolStorage.js";
 import {
   buildRoundContext,
   clearPlayerRoundPicks,
@@ -65,6 +77,42 @@ describe("survivorPoolUtils", () => {
     expect(restored.name).toBe("Friends Pool");
     expect(restored.processedRoundKeys).toEqual(["firstRound"]);
     expect(restored.players[0].usedTeamIds).toEqual(["duke"]);
+  });
+
+  it("persists multiple survivor pools with an active pool selection", () => {
+    const friendsEntry = createSurvivorPoolEntry({
+      id: "friends",
+      name: "Friends Pool",
+      pool: createPool({
+        id: "friends",
+        name: "Friends Pool",
+        players: [createPlayer({ id: "sid", name: "Sid" })],
+      }),
+    });
+    const familyEntry = createSurvivorPoolEntry({
+      id: "family",
+      name: "Family Pool",
+      pool: createPool({
+        id: "family",
+        name: "Family Pool",
+        players: [createPlayer({ id: "amy", name: "Amy" })],
+      }),
+    });
+
+    let workspace = createSurvivorPoolWorkspace();
+    workspace = addSurvivorPool(workspace, friendsEntry);
+    workspace = addSurvivorPool(workspace, familyEntry);
+    workspace = setActiveSurvivorPool(workspace, "family");
+    workspace = renameSurvivorPool(workspace, "family", "Family Bracket Crew");
+    saveSurvivorPoolWorkspace(workspace);
+
+    const restoredWorkspace = loadSurvivorPoolWorkspace();
+    const activeEntry = getActiveSurvivorPoolEntry(restoredWorkspace);
+
+    expect(restoredWorkspace.survivorPoolOrder).toContain("friends");
+    expect(restoredWorkspace.survivorPoolOrder).toContain("family");
+    expect(activeEntry.name).toBe("Family Bracket Crew");
+    expect(activeEntry.pool.players[0].name).toBe("Amy");
   });
 
   it("uses only official March Madness round teams and games", () => {
