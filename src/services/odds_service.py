@@ -70,16 +70,37 @@ class OddsService:
                     best_score = score
         return best_match if best_match and best_score >= 0.6 else candidates[0]
 
+    def _team_names_match(self, left: str, right: str) -> bool:
+        left_candidates = self._candidate_team_keys(left)
+        right_candidates = self._candidate_team_keys(right)
+        if not left_candidates or not right_candidates:
+            return False
+
+        for left_candidate in left_candidates:
+            for right_candidate in right_candidates:
+                if left_candidate == right_candidate:
+                    return True
+                if left_candidate.startswith(right_candidate) or right_candidate.startswith(left_candidate):
+                    return True
+
+                left_tokens = set(left_candidate.split())
+                right_tokens = set(right_candidate.split())
+                if left_tokens and right_tokens:
+                    overlap = len(left_tokens & right_tokens) / max(len(left_tokens), len(right_tokens))
+                    if overlap >= 0.67:
+                        return True
+
+                if SequenceMatcher(None, left_candidate, right_candidate).ratio() >= 0.88:
+                    return True
+        return False
+
     def _match_event(self, events: list[dict[str, Any]], team_a: str, team_b: str) -> dict[str, Any] | None:
-        requested = sorted([normalizer.resolve(team_a), normalizer.resolve(team_b)])
         for event in events:
-            event_names = sorted(
-                [
-                    self._resolve_market_team(str(event.get("home_team", ""))),
-                    self._resolve_market_team(str(event.get("away_team", ""))),
-                ]
-            )
-            if event_names == requested:
+            home_team = str(event.get("home_team", ""))
+            away_team = str(event.get("away_team", ""))
+            direct_match = self._team_names_match(team_a, home_team) and self._team_names_match(team_b, away_team)
+            swapped_match = self._team_names_match(team_a, away_team) and self._team_names_match(team_b, home_team)
+            if direct_match or swapped_match:
                 return event
         return None
 
@@ -90,10 +111,8 @@ class OddsService:
         return []
 
     def _team_outcome(self, outcomes: list[dict[str, Any]], team_name: str) -> dict[str, Any] | None:
-        requested = normalizer.resolve(team_name)
         for outcome in outcomes:
-            outcome_name = self._resolve_market_team(str(outcome.get("name", "")))
-            if outcome_name == requested:
+            if self._team_names_match(str(outcome.get("name", "")), team_name):
                 return outcome
         return None
 
@@ -223,7 +242,11 @@ class OddsService:
         bookmakers = [self._parse_bookmaker(bookmaker, team_a, team_b) for bookmaker in event.get("bookmakers", [])]
         bookmakers.sort(key=lambda book: BOOK_PRIORITY.get(str(book.get("key")), 99))
         consensus = self._consensus(bookmakers)
-        prediction = prediction or self.predictor.predict(team_a, team_b, neutral_site=True)
+        if prediction is None:
+            try:
+                prediction = self.predictor.predict(team_a, team_b, neutral_site=True)
+            except ValueError:
+                prediction = None
         return {
             "team_a": team_a,
             "team_b": team_b,
@@ -234,6 +257,6 @@ class OddsService:
             "available_bookmakers": [book.get("title") for book in bookmakers if book.get("title")],
             "consensus": consensus,
             "last_updated": consensus.get("last_updated"),
-            "model_vs_market": self._model_vs_market(prediction, consensus, team_a, team_b),
+            "model_vs_market": None if prediction is None else self._model_vs_market(prediction, consensus, team_a, team_b),
             "message": None,
         }

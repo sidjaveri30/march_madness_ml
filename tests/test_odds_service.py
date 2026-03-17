@@ -76,7 +76,23 @@ SAMPLE_EVENTS = [
                 ],
             },
         ],
-    }
+    },
+    {
+        "id": "kansas-cal-baptist",
+        "home_team": "Kansas Jayhawks",
+        "away_team": "Cal Baptist Lancers",
+        "bookmakers": [
+            {
+                "key": "fanduel",
+                "title": "FanDuel",
+                "last_update": "2026-03-15T12:10:00Z",
+                "markets": [
+                    {"key": "h2h", "outcomes": [{"name": "Kansas Jayhawks", "price": -1700}, {"name": "Cal Baptist Lancers", "price": 890}]},
+                    {"key": "spreads", "outcomes": [{"name": "Kansas Jayhawks", "price": -105, "point": -14.5}, {"name": "Cal Baptist Lancers", "price": -115, "point": 14.5}]},
+                ],
+            }
+        ],
+    },
 ]
 
 
@@ -97,8 +113,24 @@ class OddsServiceTests(unittest.TestCase):
         service = OddsService(provider=FakeOddsProvider(SAMPLE_EVENTS), predictor=FakePredictor())
         duke_vandy = service.get_matchup_odds("Duke", "Vanderbilt")
         duke_siena = service.get_matchup_odds("Duke", "Siena")
+        kansas_cbu = service.get_matchup_odds("Kansas", "Cal Baptist")
         self.assertEqual(duke_vandy["event_id"], "duke-vandy")
         self.assertEqual(duke_siena["event_id"], "duke-siena")
+        self.assertEqual(kansas_cbu["event_id"], "kansas-cal-baptist")
+
+    def test_service_returns_market_only_payload_when_predictor_cannot_resolve_team(self):
+        class LimitedPredictor(FakePredictor):
+            def predict(self, team_a: str, team_b: str, neutral_site: bool = True):
+                if "Cal Baptist" in {team_a, team_b}:
+                    raise ValueError("Unknown team: Cal Baptist")
+                return super().predict(team_a, team_b, neutral_site=neutral_site)
+
+        service = OddsService(provider=FakeOddsProvider(SAMPLE_EVENTS), predictor=LimitedPredictor())
+        payload = service.get_matchup_odds("Kansas", "Cal Baptist")
+
+        self.assertTrue(payload["event_found"])
+        self.assertIsNone(payload["model_vs_market"])
+        self.assertIsNotNone(payload["consensus"]["team_a_implied_prob_avg"])
 
     def test_service_handles_missing_odds_and_placeholder_matchups(self):
         service = OddsService(provider=FakeOddsProvider([]), predictor=FakePredictor())

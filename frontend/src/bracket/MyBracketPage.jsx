@@ -21,6 +21,7 @@ import MatchupDetailsModal from "./MatchupDetailsModal";
 import { isResolvedTeam, sameTeam } from "./bracketTeams";
 import { createExactPredictionKey, createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
 import SaveBracketControls from "./SaveBracketControls";
+import { validateBracketPredictionNames } from "./teamNameResolver";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
@@ -177,6 +178,7 @@ export default function MyBracketPage() {
   async function handleAutoFill(overwrite = false) {
     setAutoFillBusy(true);
     try {
+      await validateBracketPredictionNames(API_URL, bracketDefinition);
       const result = await autoFillBracket({
         definition: bracketDefinition,
         overwrite,
