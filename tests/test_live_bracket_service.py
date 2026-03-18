@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from src.services.live_bracket_service import EspnLiveGameProvider
 
@@ -161,10 +162,16 @@ class _MockSession:
 class LiveBracketServiceTests(unittest.TestCase):
     def test_espn_provider_normalizes_live_and_final_games(self):
         session = _MockSession()
-        provider = EspnLiveGameProvider(session=session)
-        games = provider.fetch_games()
+        with patch("src.services.live_bracket_service.settings.espn_schedule_timezone", "America/Chicago"), patch(
+            "src.services.live_bracket_service.settings.espn_schedule_days_back",
+            1,
+        ), patch("src.services.live_bracket_service.settings.espn_schedule_days_ahead", 2):
+            provider = EspnLiveGameProvider(session=session)
+            games = provider.fetch_games()
 
-        self.assertEqual(len(games), 3)
+        self.assertEqual(sum(1 for game in games if game.status == "live"), 1)
+        self.assertEqual(sum(1 for game in games if game.status == "final"), 1)
+        self.assertGreaterEqual(sum(1 for game in games if game.status == "upcoming"), 1)
         self.assertEqual(games[0].status, "live")
         self.assertEqual(games[0].detail, "2H 5:12")
         self.assertEqual(games[0].teamAKey, "florida")
@@ -174,7 +181,7 @@ class LiveBracketServiceTests(unittest.TestCase):
         self.assertEqual(games[1].winnerKey, "duke")
         self.assertEqual(games[2].status, "upcoming")
         self.assertEqual(games[2].teamA, "Wisconsin")
-        self.assertGreaterEqual(len(session.calls), 2)
+        self.assertGreaterEqual(len(session.calls), 3)
         self.assertTrue(all("dates" in call for call in session.calls))
         self.assertTrue(all({game.teamA, game.teamB} != {"Dayton", "Boise St."} for game in games))
 

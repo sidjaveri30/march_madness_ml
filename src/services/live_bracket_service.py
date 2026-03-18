@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -345,10 +346,12 @@ class EspnLiveGameProvider:
     def _fetch_scoreboard_events(self) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
         seen_event_ids: set[str] = set()
-        current_date = datetime.now(tz=UTC).date()
+        local_now = datetime.now(tz=ZoneInfo(settings.espn_schedule_timezone))
+        start_offset = -max(settings.espn_schedule_days_back, 0)
+        end_offset = max(settings.espn_schedule_days_ahead - 1, 0)
 
-        for day_offset in range(max(settings.espn_schedule_days_ahead, 1)):
-            target_date = current_date + timedelta(days=day_offset)
+        for day_offset in range(start_offset, end_offset + 1):
+            target_date = local_now.date() + timedelta(days=day_offset)
             response = self.session.get(
                 settings.espn_scoreboard_url,
                 params={
