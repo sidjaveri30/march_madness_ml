@@ -3,12 +3,12 @@ import { memo } from "react";
 import TeamLogo from "../TeamLogo";
 import { getTeamId, getTeamName, isPlaceholderTeam } from "./bracketTeams";
 
-function TeamSlot({ team, seed, isSelected, isDisabled, onClick, interactive = true, score = null }) {
+function TeamSlot({ team, seed, isSelected, isDisabled, onClick, interactive = true, score = null, outcome = "pending" }) {
   const teamName = getTeamName(team);
   const isPlaceholder = isPlaceholderTeam(team);
   return (
     <button
-      className={`team-slot ${isSelected ? "team-slot-selected" : ""} ${isPlaceholder ? "team-slot-placeholder" : ""} ${interactive ? "" : "team-slot-static"} ${score !== null && score !== undefined ? "team-slot-with-score" : ""}`}
+      className={`team-slot ${isSelected ? "team-slot-selected" : ""} ${isPlaceholder ? "team-slot-placeholder" : ""} ${interactive ? "" : "team-slot-static"} ${score !== null && score !== undefined ? "team-slot-with-score" : ""} ${outcome !== "pending" ? `team-slot-${outcome}` : ""}`}
       disabled={!team || (interactive && isDisabled)}
       onClick={interactive ? onClick : undefined}
       type="button"
@@ -28,7 +28,8 @@ function areEqualTeamSlots(previousProps, nextProps) {
     previousProps.isSelected === nextProps.isSelected &&
     previousProps.isDisabled === nextProps.isDisabled &&
     previousProps.interactive === nextProps.interactive &&
-    previousProps.score === nextProps.score
+    previousProps.score === nextProps.score &&
+    previousProps.outcome === nextProps.outcome
   );
 }
 

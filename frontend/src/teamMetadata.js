@@ -1,15 +1,44 @@
 const ESPN_LOGO_BASE = "https://a.espncdn.com/i/teamlogos/ncaa/500";
+const TEAM_LOGO_ALIASES = {
+  "prairie view a and m": "prairie view a m",
+  "prairie view a and m panthers": "prairie view a m",
+  "prairie view a m panthers": "prairie view a m",
+  "texas a and m": "texas a m",
+  "texas am": "texas a m",
+  "texas a and m aggies": "texas a m",
+  "texas a m aggies": "texas a m",
+  "texas a and m corpus christi": "texas a m corpus christi",
+  "texas a m corpus christi": "texas a m corpus christi",
+  "texas a and m corpus christi islanders": "texas a m corpus christi",
+  "texas a m corpus christi islanders": "texas a m corpus christi",
+};
 
 function canonicalizeTeamName(value) {
   return String(value || "")
     .toLowerCase()
-    .replace(/&/g, "and")
+    .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
 function buildLogoUrl(id) {
   return `${ESPN_LOGO_BASE}/${id}.png`;
+}
+
+function buildLookupCandidates(teamName) {
+  const canonical = canonicalizeTeamName(teamName);
+  const candidates = new Set([canonical]);
+  const aliased = TEAM_LOGO_ALIASES[canonical];
+  if (aliased) candidates.add(aliased);
+
+  [canonical, aliased].filter(Boolean).forEach((value) => {
+    const parts = value.split(" ").filter(Boolean);
+    for (let count = parts.length - 1; count >= 2; count -= 1) {
+      candidates.add(parts.slice(0, count).join(" "));
+    }
+  });
+
+  return [...candidates];
 }
 
 const TEAM_LOGO_IDS = {
@@ -53,6 +82,7 @@ const TEAM_LOGO_IDS = {
   "saint mary s": 2608,
   "saint marys": 2608,
   "texas a m": 245,
+  "texas a m corpus christi": 2837,
   houston: 248,
   idaho: 70,
   arizona: 12,
@@ -100,9 +130,8 @@ const TEAM_LOGO_IDS = {
 };
 
 function getTeamLogoUrl(teamName) {
-  const key = canonicalizeTeamName(teamName);
-  const id = TEAM_LOGO_IDS[key];
-  return id ? buildLogoUrl(id) : null;
+  const key = buildLookupCandidates(teamName).find((candidate) => TEAM_LOGO_IDS[candidate]);
+  return key ? buildLogoUrl(TEAM_LOGO_IDS[key]) : null;
 }
 
 function getTeamInitials(teamName) {
@@ -117,4 +146,4 @@ function getTeamInitials(teamName) {
     .toUpperCase();
 }
 
-export { canonicalizeTeamName, getTeamInitials, getTeamLogoUrl };
+export { buildLookupCandidates, canonicalizeTeamName, getTeamInitials, getTeamLogoUrl };

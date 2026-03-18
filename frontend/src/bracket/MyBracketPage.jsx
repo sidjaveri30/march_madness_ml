@@ -18,6 +18,7 @@ import {
 } from "./bracketStorage";
 import BracketBoard from "./BracketBoard";
 import EntryManager from "./EntryManager";
+import { useLiveBracketFeed } from "./liveBracketProvider";
 import MatchupDetailsModal from "./MatchupDetailsModal";
 import { isResolvedTeam, sameTeam } from "./bracketTeams";
 import { createExactPredictionKey, createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
@@ -43,6 +44,7 @@ export default function MyBracketPage() {
   const [autoFillMode, setAutoFillMode] = useState(DEFAULT_AUTO_FILL_MODE);
   const [debugLayout, setDebugLayout] = useState(false);
   const autoFillPredictionCacheRef = useRef(new Map());
+  const liveFeed = useLiveBracketFeed({ definition: bracketDefinition });
 
   const activeEntry = useMemo(() => getActiveEntry(workspace), [workspace]);
   const bracketState = useMemo(() => sanitizeEntryState(activeEntry), [activeEntry]);
@@ -272,10 +274,12 @@ export default function MyBracketPage() {
         <BracketBoard
           debugLayout={debugLayout}
           definition={bracketDefinition}
+          getGameInfo={(matchupId) => liveFeed.view?.games?.[matchupId] || null}
           getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
           getWinner={(matchupId) => bracketState.picks[matchupId]}
           onDetails={(matchup) => setSelectedMatchup(matchup)}
           onPick={handlePick}
+          showPickOutcome
         />
       </div>
 

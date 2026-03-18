@@ -40,6 +40,7 @@ export default function BracketBoard({
   interactive = true,
   onDetails,
   onPick = () => {},
+  showPickOutcome = false,
 }) {
   const layout = useMemo(() => computeBracketLayout(definition), [definition]);
 
@@ -93,6 +94,7 @@ export default function BracketBoard({
           style={{ left: card.x, top: card.y, width: card.width || undefined, height: card.height || undefined }}
           teams={getTeams(card.matchup.id)}
           winner={getWinner(card.matchup.id)}
+          showPickOutcome={showPickOutcome}
         />
       ))}
 

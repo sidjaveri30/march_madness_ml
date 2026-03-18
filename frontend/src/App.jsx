@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 const PredictGamePage = lazy(() => import("./PredictGamePage"));
 const LiveBracketPage = lazy(() => import("./bracket/LiveBracketPage"));
@@ -11,9 +11,18 @@ const MODES = [
   { id: "live-bracket", label: "Live Bracket" },
   { id: "survivor-pool", label: "Survivor Pool" },
 ];
+const THEME_STORAGE_KEY = "hub-ui-theme";
+
+function getPreferredTheme() {
+  if (typeof window === "undefined") return "light";
+  const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+  return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+}
 
 export default function App() {
   const [mode, setMode] = useState("predict");
+  const [theme, setTheme] = useState(getPreferredTheme);
   const activeMode = MODES.find((option) => option.id === mode);
   const ActivePage = useMemo(() => {
     switch (mode) {
@@ -28,6 +37,11 @@ export default function App() {
         return PredictGamePage;
     }
   }, [mode]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   return (
     <main className="shell">
@@ -44,19 +58,31 @@ export default function App() {
             <span className="metric-label">Workspace</span>
             <strong>{activeMode?.label}</strong>
           </div>
+          <button
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            aria-pressed={theme === "dark"}
+            className={`theme-toggle ${theme === "dark" ? "theme-toggle-active" : ""}`}
+            onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+            type="button"
+          >
+            <span className="theme-toggle-track">
+              <span className="theme-toggle-label">{theme === "dark" ? "Dark" : "Light"}</span>
+              <span aria-hidden="true" className="theme-toggle-thumb" />
+            </span>
+          </button>
           <div className="mode-switch" role="tablist">
-          {MODES.map((option) => (
-            <button
-              aria-selected={mode === option.id}
-              className={`mode-button ${mode === option.id ? "mode-button-active" : ""}`}
-              key={option.id}
-              onClick={() => setMode(option.id)}
-              role="tab"
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
+            {MODES.map((option) => (
+              <button
+                aria-selected={mode === option.id}
+                className={`mode-button ${mode === option.id ? "mode-button-active" : ""}`}
+                key={option.id}
+                onClick={() => setMode(option.id)}
+                role="tab"
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </section>

@@ -36,7 +36,9 @@ const TEAM_KEY_ALIASES = {
   "california baptist": "cal baptist",
   "cal baptist university": "cal baptist",
   "prairie view a m": "prairie view aandm",
+  "prairie view a and m": "prairie view aandm",
   "texas a m": "texas am",
+  "texas a and m": "texas am",
 };
 
 function resolveLiveTeamKey(teamName) {

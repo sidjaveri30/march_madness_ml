@@ -20,6 +20,29 @@
   --danger: #c2410c;
   --radius-card: 18px;
   --radius-control: 14px;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color: #e5eef8;
+  background: #07111d;
+  --surface: rgba(10, 20, 35, 0.92);
+  --surface-soft: #0e1b2d;
+  --surface-strong: #13253b;
+  --surface-elevated: rgba(12, 24, 40, 0.98);
+  --line: rgba(148, 163, 184, 0.2);
+  --line-bold: rgba(148, 163, 184, 0.34);
+  --text-muted: #9eb1c7;
+  --text-soft: #7f97b2;
+  --text-strong: #edf4fb;
+  --accent: #63a4ff;
+  --accent-soft: rgba(99, 164, 255, 0.16);
+  --accent-strong: #3c87f0;
+  --shadow-soft: 0 16px 34px rgba(2, 8, 17, 0.42);
+  --shadow-card: 0 18px 36px rgba(2, 8, 17, 0.46);
+  --success: #4ade80;
+  --danger: #f97316;
+  color-scheme: dark;
 }
 
 * {
@@ -32,6 +55,12 @@ body {
   background:
     radial-gradient(circle at top, rgba(11, 95, 194, 0.08), transparent 24%),
     linear-gradient(180deg, #f3f6fa 0%, #ecf1f6 52%, #eef3f8 100%);
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top, rgba(99, 164, 255, 0.14), transparent 22%),
+    linear-gradient(180deg, #08111d 0%, #0b1624 48%, #0d1a29 100%);
 }
 
 button,
@@ -82,6 +111,46 @@ button {
   display: grid;
   justify-items: end;
   gap: 12px;
+}
+
+.theme-toggle {
+  min-height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-strong);
+}
+
+.theme-toggle-track {
+  display: inline-grid;
+  grid-template-columns: auto 22px;
+  align-items: center;
+  gap: 10px;
+  min-width: 106px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.theme-toggle-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.theme-toggle-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 4px 10px rgba(11, 95, 194, 0.24);
+  transition: transform 140ms ease;
+}
+
+.theme-toggle-active .theme-toggle-thumb {
+  transform: translateX(-2px);
 }
 
 .app-active-mode-chip {
@@ -629,6 +698,16 @@ h4 {
   grid-template-rows: auto 1fr;
 }
 
+.matchup-card-outcome-correct {
+  border-color: rgba(21, 128, 61, 0.34);
+  background: linear-gradient(180deg, rgba(240, 253, 244, 0.98), rgba(248, 255, 250, 0.96));
+}
+
+.matchup-card-outcome-incorrect {
+  border-color: rgba(194, 65, 12, 0.26);
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.98), rgba(255, 251, 245, 0.96));
+}
+
 .matchup-card-linkable {
   cursor: pointer;
 }
@@ -738,6 +817,37 @@ h4 {
   color: var(--success);
 }
 
+.matchup-status-pill-upcoming,
+.matchup-status-pill-default {
+  background: rgba(232, 238, 246, 0.95);
+  color: var(--text-muted);
+}
+
+.matchup-outcome-icon {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.matchup-outcome-icon-correct {
+  background: rgba(21, 128, 61, 0.12);
+  color: var(--success);
+}
+
+.matchup-outcome-icon-incorrect {
+  background: rgba(194, 65, 12, 0.12);
+  color: var(--danger);
+}
+
+.matchup-outcome-icon-svg {
+  width: 12px;
+  height: 12px;
+}
+
 .matchup-info-button {
   width: 18px;
   height: 18px;
@@ -789,6 +899,16 @@ h4 {
 .team-slot-selected {
   border-color: rgba(11, 95, 194, 0.26);
   background: rgba(11, 95, 194, 0.1);
+}
+
+.team-slot-correct {
+  border-color: rgba(21, 128, 61, 0.26);
+  background: rgba(21, 128, 61, 0.1);
+}
+
+.team-slot-incorrect {
+  border-color: rgba(194, 65, 12, 0.24);
+  background: rgba(194, 65, 12, 0.08);
 }
 
 .team-slot-placeholder {
@@ -1174,6 +1294,142 @@ h4 {
   color: #16202d;
   font-size: 0.66rem;
   font-weight: 800;
+}
+
+:root[data-theme="dark"] .app-header,
+:root[data-theme="dark"] .mode-panel,
+:root[data-theme="dark"] .predictor-form,
+:root[data-theme="dark"] .result-card,
+:root[data-theme="dark"] .hero-panel,
+:root[data-theme="dark"] .workspace-header,
+:root[data-theme="dark"] .save-controls,
+:root[data-theme="dark"] .metric-card,
+:root[data-theme="dark"] .entry-pill,
+:root[data-theme="dark"] .bracket-toolbar,
+:root[data-theme="dark"] .champion-chip,
+:root[data-theme="dark"] .ticker-section,
+:root[data-theme="dark"] .ticker-card,
+:root[data-theme="dark"] .live-bracket-summary,
+:root[data-theme="dark"] .modal-card,
+:root[data-theme="dark"] .modal-matchup,
+:root[data-theme="dark"] .modal-team-card,
+:root[data-theme="dark"] .modal-panel,
+:root[data-theme="dark"] .market-book-row,
+:root[data-theme="dark"] .market-summary-row-stat,
+:root[data-theme="dark"] .market-consensus-card,
+:root[data-theme="dark"] .survivor-hero,
+:root[data-theme="dark"] .survivor-section,
+:root[data-theme="dark"] .survivor-card,
+:root[data-theme="dark"] .survivor-dashboard-game,
+:root[data-theme="dark"] .survivor-team-pick,
+:root[data-theme="dark"] .survivor-filter-chip,
+:root[data-theme="dark"] .survivor-team-tile,
+:root[data-theme="dark"] .survivor-selected-pick-card,
+:root[data-theme="dark"] .survivor-player-status-card,
+:root[data-theme="dark"] .survivor-matchup-compact-row,
+:root[data-theme="dark"] .survivor-status-chip,
+:root[data-theme="dark"] .survivor-pick-summary,
+:root[data-theme="dark"] .app-active-mode-chip,
+:root[data-theme="dark"] .theme-toggle-track,
+:root[data-theme="dark"] .matchup-card,
+:root[data-theme="dark"] .team-slot,
+:root[data-theme="dark"] .suggestions,
+:root[data-theme="dark"] .combobox-input,
+:root[data-theme="dark"] .entry-name-input,
+:root[data-theme="dark"] .autofill-mode-select,
+:root[data-theme="dark"] .survivor-input {
+  background: var(--surface);
+  color: var(--text-strong);
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .app-header {
+  background:
+    linear-gradient(135deg, rgba(14, 28, 46, 0.96), rgba(10, 20, 35, 0.92)),
+    linear-gradient(180deg, rgba(99, 164, 255, 0.08), rgba(255, 255, 255, 0));
+}
+
+:root[data-theme="dark"] .mode-switch,
+:root[data-theme="dark"] .matchup-info-button,
+:root[data-theme="dark"] .schedule-section-toggle,
+:root[data-theme="dark"] .survivor-pick-chip,
+:root[data-theme="dark"] .survivor-game-editor {
+  background: var(--surface-soft);
+  border-color: var(--line);
+  color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .ticker-card-linkable:hover,
+:root[data-theme="dark"] .ticker-card-linkable:focus-visible,
+:root[data-theme="dark"] .matchup-card-linkable:hover,
+:root[data-theme="dark"] .matchup-card-linkable:focus-visible,
+:root[data-theme="dark"] .team-slot:hover:not(:disabled),
+:root[data-theme="dark"] .mode-button:hover,
+:root[data-theme="dark"] .secondary-button:hover,
+:root[data-theme="dark"] .info-button:hover,
+:root[data-theme="dark"] .suggestion:hover,
+:root[data-theme="dark"] .suggestion-active {
+  background: rgba(99, 164, 255, 0.12);
+  border-color: rgba(99, 164, 255, 0.28);
+}
+
+:root[data-theme="dark"] .selected-pill,
+:root[data-theme="dark"] .market-badge,
+:root[data-theme="dark"] .survivor-pick-icon-accent,
+:root[data-theme="dark"] .survivor-filter-chip-active,
+:root[data-theme="dark"] .survivor-team-tile-selected,
+:root[data-theme="dark"] .survivor-team-pick-selected,
+:root[data-theme="dark"] .team-slot-selected {
+  background: rgba(99, 164, 255, 0.14);
+  color: var(--accent);
+}
+
+:root[data-theme="dark"] .team-slot-static:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+:root[data-theme="dark"] .matchup-card-outcome-correct,
+:root[data-theme="dark"] .team-slot-correct,
+:root[data-theme="dark"] .modal-team-card-selected,
+:root[data-theme="dark"] .survivor-status-chip-success,
+:root[data-theme="dark"] .survivor-pick-icon-success,
+:root[data-theme="dark"] .survivor-pick-chip-success {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.28);
+  color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .matchup-card-outcome-incorrect,
+:root[data-theme="dark"] .team-slot-incorrect,
+:root[data-theme="dark"] .survivor-player-status-card-eliminated,
+:root[data-theme="dark"] .survivor-status-chip-danger,
+:root[data-theme="dark"] .survivor-pick-icon-danger,
+:root[data-theme="dark"] .survivor-pick-chip-danger {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: rgba(249, 115, 22, 0.24);
+  color: var(--text-strong);
+}
+
+:root[data-theme="dark"] .bracket-connector-path,
+:root[data-theme="dark"] .bracket-debug-column {
+  stroke: rgba(148, 163, 184, 0.38);
+  background: rgba(99, 164, 255, 0.24);
+}
+
+:root[data-theme="dark"] .team-logo,
+:root[data-theme="dark"] .team-logo-fallback,
+:root[data-theme="dark"] .ticker-count,
+:root[data-theme="dark"] .matchup-status-pill,
+:root[data-theme="dark"] .survivor-pick-icon {
+  background: var(--surface-strong);
+}
+
+:root[data-theme="dark"] .modal-shell {
+  background: rgba(2, 8, 17, 0.68);
+}
+
+:root[data-theme="dark"] .team-logo-fallback {
+  color: var(--text-strong);
 }
 
 .result-team-row {

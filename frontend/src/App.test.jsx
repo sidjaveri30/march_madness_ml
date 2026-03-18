@@ -106,4 +106,16 @@ describe("Bracket app", () => {
     expect(screen.getByText("Manage the pool")).toBeInTheDocument();
     expect(screen.getByText("Official round results")).toBeInTheDocument();
   });
+
+  it("persists the theme toggle and applies the root theme attribute", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const toggle = screen.getByRole("button", { name: /Switch to dark mode/i });
+    await user.click(toggle);
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(window.localStorage.getItem("hub-ui-theme")).toBe("dark");
+    expect(screen.getByRole("button", { name: /Switch to light mode/i })).toHaveAttribute("aria-pressed", "true");
+  });
 });

@@ -41,6 +41,34 @@ describe("MyBracketPage", () => {
           }),
         });
       }
+      if (String(url).includes("/live-scoreboard")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            fetchedAt: "2026-03-18T18:00:00Z",
+            games: [
+              {
+                matchupId: "east_r1_1",
+                status: "final",
+                winner: "Duke",
+                teamA: "Duke",
+                teamB: "Siena",
+                teamAScore: 77,
+                teamBScore: 61,
+              },
+              {
+                matchupId: "east_r1_2",
+                status: "live",
+                teamA: "Ohio St.",
+                teamB: "TCU",
+                teamAScore: 31,
+                teamBScore: 28,
+                detail: "2H 11:12",
+              },
+            ],
+          }),
+        });
+      }
       if (String(url).includes("/predict")) {
         const payload = JSON.parse(options?.body || "{}");
         return Promise.resolve({
@@ -127,5 +155,25 @@ describe("MyBracketPage", () => {
     await user.click(sienaButton);
 
     expect(sienaButton).toHaveClass("team-slot-selected");
+  });
+
+  it("shows correct and incorrect pick states for final games without affecting pending games", async () => {
+    const user = userEvent.setup();
+    render(<MyBracketPage />);
+
+    const finalMatchup = screen.getByTestId("matchup-east_r1_1");
+    const pendingMatchup = screen.getByTestId("matchup-south_r1_4");
+
+    await user.click(within(finalMatchup).getByRole("button", { name: /Duke/i }));
+    expect(finalMatchup).toHaveClass("matchup-card-outcome-correct");
+    expect(within(finalMatchup).getByTitle("Pick correct")).toBeInTheDocument();
+
+    await user.click(within(finalMatchup).getByRole("button", { name: /Siena/i }));
+    expect(finalMatchup).toHaveClass("matchup-card-outcome-incorrect");
+    expect(within(finalMatchup).getByTitle("Pick incorrect")).toBeInTheDocument();
+
+    await user.click(within(pendingMatchup).getByRole("button", { name: /Nebraska/i }));
+    expect(pendingMatchup).toHaveClass("matchup-card-outcome-pending");
+    expect(within(pendingMatchup).queryByTitle(/Pick /i)).not.toBeInTheDocument();
   });
 });
