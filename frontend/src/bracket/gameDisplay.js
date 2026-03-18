@@ -1,3 +1,5 @@
+import { getGameEspnUrl } from "./espnGameUrl";
+
 const COMMENCE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "numeric",
   day: "numeric",
@@ -90,6 +92,7 @@ function getDisplayGameInfo(game) {
 
   return {
     ...game,
+    espnUrl: getGameEspnUrl(game),
     displayStatusLabel: compactStatusLabel(game),
     displayStatusDetail: compactStatusDetail(game),
     team_a_score: game.team_a_score ?? game.teamAScore ?? game.scoreA ?? null,

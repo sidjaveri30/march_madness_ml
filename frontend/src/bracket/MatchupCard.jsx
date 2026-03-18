@@ -10,19 +10,51 @@ function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = 
   const canPickB = isPickableTeam(teamB);
   const displayGame = getDisplayGameInfo(gameInfo);
   const headerMeta = getMatchupHeaderMeta(matchup, displayGame);
+  const espnUrl = displayGame?.espnUrl || null;
+
+  function openEspnGame() {
+    if (!espnUrl || typeof window === "undefined") return;
+    window.open(espnUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function handleCardClick(event) {
+    if (!espnUrl) return;
+    if (event.target.closest(".matchup-info-button")) return;
+    openEspnGame();
+  }
+
+  function handleCardKeyDown(event) {
+    if (!espnUrl) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openEspnGame();
+  }
 
   return (
-    <article className={`matchup-card matchup-card-${side}`} data-testid={`matchup-${matchup.id}`} style={style}>
+    <article
+      aria-label={espnUrl ? `Open ESPN game page for ${teamA || "TBD"} vs ${teamB || "TBD"}` : undefined}
+      className={`matchup-card matchup-card-${side} ${espnUrl ? "matchup-card-linkable" : ""}`}
+      data-testid={`matchup-${matchup.id}`}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role={espnUrl ? "link" : undefined}
+      style={style}
+      tabIndex={espnUrl ? 0 : undefined}
+    >
       <div className="matchup-card-header">
         <div className="matchup-meta">
           <div className="matchup-label">{headerMeta.label}</div>
           {headerMeta.detail ? <div className="matchup-sublabel">{headerMeta.detail}</div> : null}
         </div>
+        {espnUrl ? <span aria-hidden="true" className="matchup-external-indicator">↗</span> : null}
         <button
           aria-label={`View ${matchup.label} details`}
           className="matchup-info-button"
           data-testid={`details-${matchup.id}`}
-          onClick={onDetails}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDetails();
+          }}
           type="button"
         >
           i
@@ -66,6 +98,8 @@ function sameGameInfo(left = null, right = null) {
     left.status === right.status &&
     left.statusLabel === right.statusLabel &&
     left.detail === right.detail &&
+    left.gameId === right.gameId &&
+    left.espnUrl === right.espnUrl &&
     left.commenceTime === right.commenceTime &&
     left.startTime === right.startTime &&
     left.team_a_score === right.team_a_score &&

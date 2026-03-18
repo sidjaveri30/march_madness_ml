@@ -6,7 +6,7 @@ import LiveGamesBoard from "./LiveGamesBoard";
 
 const sections = {
   live: [
-    { matchupId: "live-1", status: "live", statusLabel: "LIVE 2H 12:14", teamA: "Howard", teamB: "UMBC", teamAScore: 34, teamBScore: 29 },
+    { matchupId: "live-1", gameId: "401580926", status: "live", statusLabel: "LIVE 2H 12:14", teamA: "Howard", teamB: "UMBC", teamAScore: 34, teamBScore: 29 },
   ],
   final: [],
   upcoming: [
@@ -39,5 +39,13 @@ describe("LiveGamesBoard", () => {
 
     await user.click(within(upcomingSection).getByRole("button", { name: /Show Less/i }));
     expect(within(upcomingSection).queryByText("Saint Mary's")).not.toBeInTheDocument();
+  });
+
+  it("links ticker cards to ESPN when a game id exists", () => {
+    render(<LiveGamesBoard sections={sections} />);
+
+    const link = screen.getByRole("link", { name: /Open ESPN game page for Howard vs UMBC/i });
+    expect(link).toHaveAttribute("href", "https://www.espn.com/mens-college-basketball/game/_/gameId/401580926");
+    expect(link).toHaveAttribute("target", "_blank");
   });
 });

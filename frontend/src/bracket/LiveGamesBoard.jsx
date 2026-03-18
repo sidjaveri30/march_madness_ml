@@ -8,12 +8,12 @@ const DEFAULT_VISIBLE_COUNT = 2;
 function ScheduleGame({ game }) {
   const displayGame = getDisplayGameInfo(game);
   const roundInfo = displayGame.roundLabel || displayGame.region || "";
-
-  return (
-    <article className={`ticker-card ticker-card-${displayGame.status}`}>
+  const content = (
+    <>
       <div className="ticker-status">
         <span className="matchup-status-pill matchup-status-pill-inline">{displayGame.displayStatusLabel}</span>
         {displayGame.displayStatusDetail ? <span className="schedule-game-detail">{displayGame.displayStatusDetail}</span> : null}
+        {displayGame.espnUrl ? <span aria-hidden="true" className="matchup-external-indicator schedule-game-external-indicator">↗</span> : null}
       </div>
       {roundInfo ? <div className="schedule-game-round">{roundInfo}</div> : null}
       <div className="ticker-team-row">
@@ -26,7 +26,23 @@ function ScheduleGame({ game }) {
         <span className="ticker-team-name">{displayGame.teamB}</span>
         <strong>{displayGame.team_b_score ?? "-"}</strong>
       </div>
-    </article>
+    </>
+  );
+
+  if (!displayGame.espnUrl) {
+    return <article className={`ticker-card ticker-card-${displayGame.status}`}>{content}</article>;
+  }
+
+  return (
+    <a
+      aria-label={`Open ESPN game page for ${displayGame.teamA} vs ${displayGame.teamB}`}
+      className={`ticker-card ticker-card-${displayGame.status} ticker-card-linkable`}
+      href={displayGame.espnUrl}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      {content}
+    </a>
   );
 }
 

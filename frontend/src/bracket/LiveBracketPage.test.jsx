@@ -104,4 +104,23 @@ describe("LiveBracketPage", () => {
     expect(screen.getByTestId("live-games-board")).toBeInTheDocument();
     expect(screen.getByText("Upcoming")).toBeInTheDocument();
   });
+
+  it("opens ESPN in a new tab when a live matchup card is clicked", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    render(<LiveBracketPage />);
+
+    const matchupCard = await screen.findByTestId("matchup-east_r1_2");
+    expect(matchupCard).toHaveAttribute("role", "link");
+
+    await user.click(matchupCard);
+
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://www.espn.com/mens-college-basketball/game/_/gameId/401580928",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    openSpy.mockRestore();
+  });
 });

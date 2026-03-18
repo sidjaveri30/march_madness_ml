@@ -629,6 +629,16 @@ h4 {
   grid-template-rows: auto 1fr;
 }
 
+.matchup-card-linkable {
+  cursor: pointer;
+}
+
+.matchup-card-linkable:hover,
+.matchup-card-linkable:focus-visible {
+  border-color: rgba(11, 95, 194, 0.26);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(240, 246, 253, 0.98));
+}
+
 .matchup-card-center-left,
 .matchup-card-center-right,
 .matchup-card-center {
@@ -739,6 +749,14 @@ h4 {
   font-weight: 700;
   line-height: 1;
   padding: 0;
+  flex: 0 0 auto;
+}
+
+.matchup-external-indicator {
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
   flex: 0 0 auto;
 }
 
@@ -927,6 +945,21 @@ h4 {
   min-height: 106px;
 }
 
+.ticker-card-linkable {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.ticker-card-linkable:hover,
+.ticker-card-linkable:focus-visible {
+  opacity: 0.96;
+  border-color: rgba(11, 95, 194, 0.24);
+  background: rgba(248, 251, 255, 0.88);
+}
+
 .ticker-card-live {
   background: linear-gradient(180deg, rgba(11, 95, 194, 0.09), rgba(255, 255, 255, 0.92));
   border-color: rgba(11, 95, 194, 0.18);
@@ -966,6 +999,10 @@ h4 {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.schedule-game-external-indicator {
+  margin-left: auto;
 }
 
 .schedule-game-round {

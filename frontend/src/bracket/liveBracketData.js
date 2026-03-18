@@ -7,6 +7,7 @@ const MOCK_LIVE_SNAPSHOTS = [
     label: "Opening Window",
     games: {
       ff_midwest_16: {
+        gameId: "401580926",
         matchupId: "ff_midwest_16",
         status: "live",
         statusLabel: "LIVE 2H 12:14",
@@ -16,6 +17,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         teamBScore: 29,
       },
       ff_west_11: {
+        gameId: "401580927",
         matchupId: "ff_west_11",
         status: "final",
         statusLabel: "FINAL",
@@ -26,6 +28,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         winner: "Texas",
       },
       east_r1_2: {
+        gameId: "401580928",
         matchupId: "east_r1_2",
         status: "live",
         statusLabel: "LIVE 1H 08:42",
@@ -35,6 +38,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         teamBScore: 22,
       },
       south_r1_4: {
+        gameId: "401580929",
         matchupId: "south_r1_4",
         status: "upcoming",
         statusLabel: "Thu 3:15 PM",
@@ -42,6 +46,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         teamB: "Troy",
       },
       west_r1_1: {
+        gameId: "401580930",
         matchupId: "west_r1_1",
         status: "upcoming",
         statusLabel: "Thu 4:10 PM",
@@ -55,6 +60,7 @@ const MOCK_LIVE_SNAPSHOTS = [
     label: "Later Update",
     games: {
       ff_midwest_16: {
+        gameId: "401580926",
         matchupId: "ff_midwest_16",
         status: "final",
         statusLabel: "FINAL",
@@ -65,6 +71,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         winner: "Howard",
       },
       ff_west_11: {
+        gameId: "401580927",
         matchupId: "ff_west_11",
         status: "final",
         statusLabel: "FINAL",
@@ -75,6 +82,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         winner: "Texas",
       },
       east_r1_2: {
+        gameId: "401580928",
         matchupId: "east_r1_2",
         status: "final",
         statusLabel: "FINAL",
@@ -85,6 +93,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         winner: "Ohio St.",
       },
       south_r1_4: {
+        gameId: "401580929",
         matchupId: "south_r1_4",
         status: "live",
         statusLabel: "LIVE 2H 05:51",
@@ -94,6 +103,7 @@ const MOCK_LIVE_SNAPSHOTS = [
         teamBScore: 54,
       },
       west_r1_1: {
+        gameId: "401580930",
         matchupId: "west_r1_1",
         status: "upcoming",
         statusLabel: "Thu 4:10 PM",
