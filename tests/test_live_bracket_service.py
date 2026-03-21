@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from src.services.live_bracket_service import EspnLiveGameProvider
+from src.utils.team_names import normalizer
 
 
 class _MockResponse:
@@ -160,6 +161,12 @@ class _MockSession:
 
 
 class LiveBracketServiceTests(unittest.TestCase):
+    def test_team_normalizer_accepts_north_dakota_state_shorthand(self):
+        self.assertEqual(normalizer.resolve("N Dakota St"), normalizer.resolve("North Dakota St."))
+        self.assertEqual(normalizer.resolve("NDSU"), normalizer.resolve("North Dakota St."))
+        self.assertEqual(normalizer.resolve("Hawai'i"), normalizer.resolve("Hawaii"))
+        self.assertEqual(normalizer.resolve("Texas A&M"), normalizer.resolve("texas aandm"))
+
     def test_espn_provider_normalizes_live_and_final_games(self):
         session = _MockSession()
         with patch("src.services.live_bracket_service.settings.espn_schedule_timezone", "America/Chicago"), patch(

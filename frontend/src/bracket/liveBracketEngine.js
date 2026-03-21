@@ -58,7 +58,7 @@ function matchesTeams(expectedKeys, actualKeys) {
 }
 
 function findMatchingMatchup(definition, bracketState, game, usedMatchups, allMatchups) {
-  if (game.matchupId && !usedMatchups.has(game.matchupId)) {
+  if (game.matchupId && !String(game.matchupId).startsWith("unmapped-") && !usedMatchups.has(game.matchupId)) {
     return allMatchups.find((matchup) => matchup.id === game.matchupId) || null;
   }
 
@@ -69,6 +69,19 @@ function findMatchingMatchup(definition, bracketState, game, usedMatchups, allMa
       return matchesTeams(matchupTeamKeys(definition, bracketState, matchup.id), actualKeys);
     }) || null
   );
+}
+
+function resolveBracketWinnerName(definition, bracketState, matchupId, game) {
+  const winnerKey = game.winnerKey || (game.winner ? resolveLiveTeamKey(game.winner) : null);
+  if (!winnerKey) return game.winner || null;
+
+  const matchupTeams = getMatchupTeams(definition, bracketState, matchupId).filter((team) => typeof team === "string");
+  const matchedTeam = matchupTeams.find((team) => sameTeamKeys(resolveLiveTeamKey(team), winnerKey));
+  if (matchedTeam) return matchedTeam;
+
+  if (sameTeamKeys(resolveLiveTeamKey(game.teamA), winnerKey)) return game.teamA;
+  if (sameTeamKeys(resolveLiveTeamKey(game.teamB), winnerKey)) return game.teamB;
+  return game.winner || null;
 }
 
 function buildOfficialBracketView({ definition, games, id = "live-feed", label = "Live Feed", meta = {} }) {
@@ -99,8 +112,10 @@ function buildOfficialBracketView({ definition, games, id = "live-feed", label =
       matchedOnPass = true;
 
       if (enriched.status === "final" && enriched.winner) {
-        const winnerName = sameTeamKeys(resolveLiveTeamKey(enriched.winner), enriched.teamAKey) ? enriched.teamA : enriched.teamB;
-        bracketState = applyWinnerPick(definition, bracketState, matchup.id, winnerName);
+        const winnerName = resolveBracketWinnerName(definition, bracketState, matchup.id, enriched);
+        if (winnerName) {
+          bracketState = applyWinnerPick(definition, bracketState, matchup.id, winnerName);
+        }
       }
     }
     if (!matchedOnPass) break;

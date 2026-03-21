@@ -1,7 +1,7 @@
 import { getGameEspnUrl } from "./espnGameUrl";
 
 const COMMENCE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-  month: "numeric",
+  month: "short",
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
@@ -38,25 +38,49 @@ function formatCommenceTime(value) {
 function compactLiveDetail(statusLabel) {
   const normalized = compactWhitespace(statusLabel);
   const match = normalized.match(/^LIVE\s+(.+)$/i);
-  return match ? match[1].toUpperCase() : normalized.toUpperCase();
-}
-
-function compactStatusLabel(game) {
-  if (!game) return "";
-  if (game.status === "live") return "LIVE";
-  if (game.status === "final") return "FINAL";
-  if (game.status === "upcoming") return "TIP";
-  return compactWhitespace(game.statusLabel || game.status || "");
+  const rawDetail = match ? match[1] : normalized;
+  const periodFirst = rawDetail.match(/^(1H|2H|OT|\d+OT)\s+(\d{1,2}:\d{2})$/i);
+  if (periodFirst) {
+    return `${periodFirst[2]} ${periodFirst[1].toUpperCase()}`;
+  }
+  const clockFirst = rawDetail.match(/^(\d{1,2}:\d{2})\s+(1H|2H|OT|\d+OT)$/i);
+  if (clockFirst) {
+    return `${clockFirst[1]} ${clockFirst[2].toUpperCase()}`;
+  }
+  return rawDetail.toUpperCase();
 }
 
 function compactStatusDetail(game) {
   if (!game) return "";
   if (game.status === "live") return compactLiveDetail(game.detail || game.statusLabel);
-  if (game.status === "final") return "";
   if (game.status === "upcoming") {
     return formatCommenceTime(game.commenceTime || game.startTime || game.statusLabel);
   }
+  if (game.status === "final") return "Final";
   return compactWhitespace(game.statusLabel);
+}
+
+function getGameStatusDisplay(game) {
+  if (!game) return null;
+  if (game.status === "live") {
+    return {
+      text: compactStatusDetail(game),
+      type: "live",
+      liveLabel: "LIVE",
+    };
+  }
+
+  if (game.status === "final") {
+    return {
+      text: "Final",
+      type: "final",
+    };
+  }
+
+  return {
+    text: compactStatusDetail(game),
+    type: "upcoming",
+  };
 }
 
 function getMatchupHeaderMeta(matchup, game) {
@@ -67,23 +91,9 @@ function getMatchupHeaderMeta(matchup, game) {
     };
   }
 
-  if (game.status === "live") {
-    return {
-      label: "LIVE",
-      detail: compactStatusDetail(game),
-    };
-  }
-
-  if (game.status === "final") {
-    return {
-      label: "FINAL",
-      detail: "",
-    };
-  }
-
   return {
-    label: compactMatchupLabel(matchup.label),
-    detail: compactStatusDetail(game),
+    label: "",
+    detail: "",
   };
 }
 
@@ -93,8 +103,7 @@ function getDisplayGameInfo(game) {
   return {
     ...game,
     espnUrl: getGameEspnUrl(game),
-    displayStatusLabel: compactStatusLabel(game),
-    displayStatusDetail: compactStatusDetail(game),
+    statusDisplay: getGameStatusDisplay(game),
     team_a_score: game.team_a_score ?? game.teamAScore ?? game.scoreA ?? null,
     team_b_score: game.team_b_score ?? game.teamBScore ?? game.scoreB ?? null,
   };
@@ -102,10 +111,10 @@ function getDisplayGameInfo(game) {
 
 export {
   compactStatusDetail,
-  compactStatusLabel,
   compactMatchupLabel,
   compactWhitespace,
   formatCommenceTime,
   getDisplayGameInfo,
+  getGameStatusDisplay,
   getMatchupHeaderMeta,
 };

@@ -23,7 +23,7 @@ describe("LiveGamesBoard", () => {
     expect(screen.getByText("Live Now")).toBeInTheDocument();
     expect(screen.getByText("Final")).toBeInTheDocument();
     expect(screen.getByText("Upcoming")).toBeInTheDocument();
-    expect(screen.getByText("2H 12:14")).toBeInTheDocument();
+    expect(screen.getByText("12:14 2H")).toBeInTheDocument();
     expect(screen.queryByText("LIVE 2H 12:14")).not.toBeInTheDocument();
   });
 

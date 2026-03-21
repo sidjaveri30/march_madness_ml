@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { bracketDefinition } from "./bracketDefinition";
+import { resetSharedLiveFeedStores } from "./liveBracketProvider";
 import MyBracketPage from "./MyBracketPage";
 import { PREDICTION_TEAM_ALIASES } from "./teamNameResolver";
 
 describe("MyBracketPage", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    resetSharedLiveFeedStores();
     vi.spyOn(Math, "random").mockReturnValue(0.1);
     global.fetch = vi.fn((url, options) => {
       if (String(url).includes("/teams")) {
@@ -64,6 +66,15 @@ describe("MyBracketPage", () => {
                 teamAScore: 31,
                 teamBScore: 28,
                 detail: "2H 11:12",
+              },
+              {
+                matchupId: "west_r1_3",
+                status: "final",
+                winner: "High Point",
+                teamA: "Wisconsin",
+                teamB: "High Point",
+                teamAScore: 64,
+                teamBScore: 68,
               },
             ],
           }),
@@ -175,5 +186,24 @@ describe("MyBracketPage", () => {
     await user.click(within(pendingMatchup).getByRole("button", { name: /Nebraska/i }));
     expect(pendingMatchup).toHaveClass("matchup-card-outcome-pending");
     expect(within(pendingMatchup).queryByTitle(/Pick /i)).not.toBeInTheDocument();
+  });
+
+  it("marks downstream future picks as busted when an earlier picked team is eliminated", async () => {
+    const user = userEvent.setup();
+    render(<MyBracketPage />);
+
+    const firstRoundMatchup = screen.getByTestId("matchup-west_r1_3");
+    const laterRoundMatchup = screen.getByTestId("matchup-west_r2_2");
+
+    await user.click(within(firstRoundMatchup).getByRole("button", { name: /Wisconsin/i }));
+    await user.click(within(screen.getByTestId("matchup-west_r1_4")).getByRole("button", { name: /Arkansas/i }));
+    await user.click(within(laterRoundMatchup).getByRole("button", { name: /Wisconsin/i }));
+
+    expect(firstRoundMatchup).toHaveClass("matchup-card-outcome-incorrect");
+    expect(within(firstRoundMatchup).getByTitle("Pick incorrect")).toBeInTheDocument();
+
+    expect(laterRoundMatchup).toHaveClass("matchup-card-outcome-busted");
+    expect(within(laterRoundMatchup).getByRole("button", { name: /Wisconsin/i })).toHaveClass("team-slot-busted");
+    expect(within(laterRoundMatchup).getByTitle("Pick busted")).toBeInTheDocument();
   });
 });

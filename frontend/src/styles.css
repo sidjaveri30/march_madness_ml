@@ -708,6 +708,13 @@ h4 {
   background: linear-gradient(180deg, rgba(255, 247, 237, 0.98), rgba(255, 251, 245, 0.96));
 }
 
+.matchup-card-outcome-busted {
+  border-color: rgba(194, 65, 12, 0.22);
+  border-style: dashed;
+  background: linear-gradient(180deg, rgba(250, 245, 245, 0.98), rgba(247, 240, 240, 0.95));
+  opacity: 0.82;
+}
+
 .matchup-card-linkable {
   cursor: pointer;
 }
@@ -735,14 +742,29 @@ h4 {
 .matchup-card-header {
   display: flex;
   justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-bottom: 2px;
   align-items: center;
-  min-height: 20px;
+  min-height: 16px;
+}
+
+.matchup-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.matchup-card-actions-floating {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
 }
 
 .matchup-meta {
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .matchup-label {
@@ -775,16 +797,21 @@ h4 {
   align-items: center;
   gap: 6px;
   min-height: var(--matchup-meta-height, 18px);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   min-width: 0;
 }
 
+.matchup-card-tight-top .matchup-status-row,
+.matchup-card-tight-top .matchup-teams {
+  padding-right: 26px;
+}
+
 .matchup-status-pill {
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 999px;
   background: rgba(232, 238, 246, 0.95);
   color: var(--text-muted);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -797,19 +824,26 @@ h4 {
 
 .matchup-status-detail {
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
 
+.matchup-status-detail-live {
+  color: #b42318;
+}
+
+.matchup-status-detail-final {
+  color: var(--text-muted);
+}
+
 .matchup-status-pill-live {
-  background: rgba(0, 87, 184, 0.1);
-  color: var(--accent);
+  background: rgba(180, 35, 24, 0.12);
+  color: #b42318;
 }
 
 .matchup-status-pill-final {
@@ -843,31 +877,59 @@ h4 {
   color: var(--danger);
 }
 
+.matchup-outcome-icon-busted {
+  background: rgba(194, 65, 12, 0.1);
+  color: var(--danger);
+}
+
 .matchup-outcome-icon-svg {
   width: 12px;
   height: 12px;
 }
 
+.matchup-status-live-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.matchup-status-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #b42318;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
+}
+
 .matchup-info-button {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(248, 250, 253, 0.96);
   color: var(--accent);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   font-weight: 700;
   line-height: 1;
   padding: 0;
   flex: 0 0 auto;
+  opacity: 0.8;
 }
 
 .matchup-external-indicator {
   color: var(--text-soft);
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   line-height: 1;
   flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.matchup-card-linkable:hover .matchup-external-indicator,
+.matchup-card-linkable:focus-visible .matchup-external-indicator {
+  opacity: 0.7;
 }
 
 .team-slot {
@@ -909,6 +971,13 @@ h4 {
 .team-slot-incorrect {
   border-color: rgba(194, 65, 12, 0.24);
   background: rgba(194, 65, 12, 0.08);
+}
+
+.team-slot-busted {
+  border-color: rgba(194, 65, 12, 0.14);
+  background: rgba(194, 65, 12, 0.06);
+  color: var(--text-muted);
+  opacity: 0.76;
 }
 
 .team-slot-placeholder {
@@ -1384,6 +1453,21 @@ h4 {
   color: var(--accent);
 }
 
+:root[data-theme="dark"] .matchup-status-pill-live,
+:root[data-theme="dark"] .matchup-status-detail-live,
+:root[data-theme="dark"] .matchup-status-live-dot {
+  color: #ff8a80;
+  background-color: #ff8a80;
+}
+
+:root[data-theme="dark"] .matchup-status-pill-live {
+  background: rgba(255, 138, 128, 0.14);
+}
+
+:root[data-theme="dark"] .matchup-status-live-dot {
+  box-shadow: 0 0 0 3px rgba(255, 138, 128, 0.16);
+}
+
 :root[data-theme="dark"] .team-slot-static:hover:not(:disabled) {
   background: var(--surface);
 }
@@ -1401,6 +1485,8 @@ h4 {
 
 :root[data-theme="dark"] .matchup-card-outcome-incorrect,
 :root[data-theme="dark"] .team-slot-incorrect,
+:root[data-theme="dark"] .matchup-card-outcome-busted,
+:root[data-theme="dark"] .team-slot-busted,
 :root[data-theme="dark"] .survivor-player-status-card-eliminated,
 :root[data-theme="dark"] .survivor-status-chip-danger,
 :root[data-theme="dark"] .survivor-pick-icon-danger,

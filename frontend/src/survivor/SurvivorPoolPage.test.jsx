@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { bracketDefinition, getAllMatchups } from "../bracket/bracketDefinition";
@@ -85,6 +85,19 @@ describe("SurvivorPoolPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Clear Current Picks" }));
     expect(screen.getByText(/Current round picks cleared/i)).toBeInTheDocument();
+  });
+
+  it("allows player names with spaces", async () => {
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    const user = userEvent.setup();
+    await addAndSelectFirstPlayer(user);
+
+    const nameInput = screen.getByRole("textbox", { name: "Player 1 name" });
+    fireEvent.change(nameInput, { target: { value: "Player 1 John Smith" } });
+
+    expect(nameInput).toHaveValue("Player 1 John Smith");
+    expect(screen.getByRole("option", { name: "Player 1 John Smith" })).toBeInTheDocument();
   });
 
   it("shows live pick indicators for active players", async () => {

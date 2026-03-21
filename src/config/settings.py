@@ -45,7 +45,7 @@ class Settings(BaseSettings):
         alias="ESPN_SCOREBOARD_URL",
     )
     espn_schedule_timezone: str = Field(default="America/Chicago", alias="ESPN_SCHEDULE_TIMEZONE")
-    espn_schedule_days_back: int = Field(default=1, alias="ESPN_SCHEDULE_DAYS_BACK")
+    espn_schedule_days_back: int = Field(default=4, alias="ESPN_SCHEDULE_DAYS_BACK")
     espn_schedule_days_ahead: int = Field(default=2, alias="ESPN_SCHEDULE_DAYS_AHEAD")
 
     @property

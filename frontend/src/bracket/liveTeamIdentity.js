@@ -23,6 +23,9 @@ const TEAM_KEY_ALIASES = {
   "tennessee st": "tennessee state",
   "north dakota state": "north dakota st",
   "north dakota st": "north dakota st",
+  "n dakota state": "north dakota st",
+  "n dakota st": "north dakota st",
+  ndsu: "north dakota st",
   "nc state": "north carolina state",
   "n c state": "north carolina state",
   "n c state wolfpack": "north carolina state",
@@ -39,6 +42,9 @@ const TEAM_KEY_ALIASES = {
   "prairie view a and m": "prairie view aandm",
   "texas a m": "texas am",
   "texas a and m": "texas am",
+  "texas aandm": "texas am",
+  "hawai i": "hawaii",
+  "hawai i rainbow warriors": "hawaii",
 };
 
 function resolveLiveTeamKey(teamName) {

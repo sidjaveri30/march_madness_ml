@@ -21,6 +21,7 @@ import EntryManager from "./EntryManager";
 import { useLiveBracketFeed } from "./liveBracketProvider";
 import MatchupDetailsModal from "./MatchupDetailsModal";
 import { isResolvedTeam, sameTeam } from "./bracketTeams";
+import { derivePickOutcomeByMatchup } from "./pickOutcome";
 import { createExactPredictionKey, createPredictionKey, fetchMatchupPrediction } from "./predictionApi";
 import SaveBracketControls from "./SaveBracketControls";
 import { validateBracketPredictionNames } from "./teamNameResolver";
@@ -74,6 +75,25 @@ export default function MyBracketPage() {
 
   const champion = useMemo(() => getChampion(bracketState), [bracketState]);
   const selectedAutoFillMode = AUTO_FILL_MODE_DETAILS[autoFillMode] || AUTO_FILL_MODE_DETAILS[DEFAULT_AUTO_FILL_MODE];
+  const pickOutcomeByMatchup = useMemo(
+    () =>
+      derivePickOutcomeByMatchup({
+        definition: bracketDefinition,
+        picks: bracketState.picks,
+        actualGamesByMatchup: liveFeed.view?.games || {},
+      }),
+    [bracketState.picks, liveFeed.view?.games],
+  );
+  const annotatedLiveGamesByMatchup = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(liveFeed.view?.games || {}).map(([matchupId, game]) => [
+          matchupId,
+          { ...game, pickOutcome: pickOutcomeByMatchup[matchupId] || "pending" },
+        ]),
+      ),
+    [liveFeed.view?.games, pickOutcomeByMatchup],
+  );
 
   function flashStatus(message, duration = 1800) {
     setSaveStatus(message);
@@ -274,7 +294,7 @@ export default function MyBracketPage() {
         <BracketBoard
           debugLayout={debugLayout}
           definition={bracketDefinition}
-          getGameInfo={(matchupId) => liveFeed.view?.games?.[matchupId] || null}
+          getGameInfo={(matchupId) => annotatedLiveGamesByMatchup[matchupId] || { pickOutcome: pickOutcomeByMatchup[matchupId] || "placeholder" }}
           getTeams={(matchupId) => getMatchupTeams(bracketDefinition, bracketState, matchupId)}
           getWinner={(matchupId) => bracketState.picks[matchupId]}
           onDetails={(matchup) => setSelectedMatchup(matchup)}

@@ -4,22 +4,6 @@ import TeamSlot from "./TeamSlot";
 import { getTeamId, isPickableTeam, sameTeam } from "./bracketTeams";
 import { getDisplayGameInfo, getMatchupHeaderMeta } from "./gameDisplay";
 
-function getWinningTeamId(game) {
-  if (!game || game.status !== "final") return "";
-  if (game.winner) return getTeamId(game.winner);
-
-  const scoreA = game.team_a_score;
-  const scoreB = game.team_b_score;
-  if (scoreA === null || scoreB === null || scoreA === scoreB) return "";
-
-  return scoreA > scoreB ? getTeamId(game.teamA) : getTeamId(game.teamB);
-}
-
-function getPickOutcome({ pickedTeamId, winningTeamId, isFinal }) {
-  if (!isFinal || !pickedTeamId || !winningTeamId) return "pending";
-  return pickedTeamId === winningTeamId ? "correct" : "incorrect";
-}
-
 function OutcomeIcon({ outcome }) {
   if (outcome === "correct") {
     return (
@@ -29,7 +13,7 @@ function OutcomeIcon({ outcome }) {
     );
   }
 
-  if (outcome === "incorrect") {
+  if (outcome === "incorrect" || outcome === "busted") {
     return (
       <svg aria-hidden="true" className="matchup-outcome-icon-svg" viewBox="0 0 16 16">
         <path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
@@ -47,17 +31,9 @@ function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = 
   const displayGame = getDisplayGameInfo(gameInfo);
   const headerMeta = getMatchupHeaderMeta(matchup, displayGame);
   const espnUrl = displayGame?.espnUrl || null;
-  const pickedTeamId = getTeamId(winner);
-  const pickOutcome = showPickOutcome
-    ? getPickOutcome({
-      pickedTeamId,
-      winningTeamId: getWinningTeamId(displayGame),
-      isFinal: displayGame?.status === "final",
-    })
-    : "pending";
-  const statusLabel = displayGame?.displayStatusLabel || "";
-  const statusDetail = displayGame?.displayStatusDetail || "";
-
+  const statusDisplay = displayGame?.statusDisplay || null;
+  const hasHeaderMeta = Boolean(headerMeta.label || headerMeta.detail);
+  const pickOutcome = showPickOutcome ? gameInfo?.pickOutcome || "pending" : "pending";
   function openEspnGame() {
     if (!espnUrl || typeof window === "undefined") return;
     window.open(espnUrl, "_blank", "noopener,noreferrer");
@@ -76,10 +52,28 @@ function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = 
     openEspnGame();
   }
 
+  const actions = (
+    <>
+      {espnUrl ? <span aria-hidden="true" className="matchup-external-indicator">↗</span> : null}
+      <button
+        aria-label={`View ${matchup.label} details`}
+        className="matchup-info-button"
+        data-testid={`details-${matchup.id}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onDetails();
+        }}
+        type="button"
+      >
+        i
+      </button>
+    </>
+  );
+
   return (
     <article
       aria-label={espnUrl ? `Open ESPN game page for ${teamA || "TBD"} vs ${teamB || "TBD"}` : undefined}
-      className={`matchup-card matchup-card-${side} matchup-card-outcome-${pickOutcome} ${espnUrl ? "matchup-card-linkable" : ""}`}
+      className={`matchup-card matchup-card-${side} matchup-card-outcome-${pickOutcome} ${espnUrl ? "matchup-card-linkable" : ""} ${hasHeaderMeta ? "" : "matchup-card-tight-top"}`}
       data-testid={`matchup-${matchup.id}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
@@ -87,32 +81,38 @@ function MatchupCard({ matchup, teams, winner, onPick, onDetails, side, style = 
       style={style}
       tabIndex={espnUrl ? 0 : undefined}
     >
-      <div className="matchup-card-header">
-        <div className="matchup-meta">
-          <div className="matchup-label">{headerMeta.label}</div>
-          {headerMeta.detail ? <div className="matchup-sublabel">{headerMeta.detail}</div> : null}
+      {hasHeaderMeta ? (
+        <div className="matchup-card-header">
+          <div className="matchup-meta">
+            {headerMeta.label ? <div className="matchup-label">{headerMeta.label}</div> : null}
+            {headerMeta.detail ? <div className="matchup-sublabel">{headerMeta.detail}</div> : null}
+          </div>
+          <div className="matchup-card-actions">{actions}</div>
         </div>
-        {espnUrl ? <span aria-hidden="true" className="matchup-external-indicator">↗</span> : null}
-        <button
-          aria-label={`View ${matchup.label} details`}
-          className="matchup-info-button"
-          data-testid={`details-${matchup.id}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onDetails();
-          }}
-          type="button"
-        >
-          i
-        </button>
-      </div>
+      ) : (
+        <div className="matchup-card-actions matchup-card-actions-floating">{actions}</div>
+      )}
 
-      {statusLabel ? (
+      {statusDisplay ? (
         <div className="matchup-status-row">
-          <span className={`matchup-status-pill matchup-status-pill-inline matchup-status-pill-${displayGame?.status || "default"}`}>{statusLabel}</span>
-          {statusDetail ? <span className="matchup-status-detail">{statusDetail}</span> : null}
-          {pickOutcome !== "pending" ? (
-            <span className={`matchup-outcome-icon matchup-outcome-icon-${pickOutcome}`} title={pickOutcome === "correct" ? "Pick correct" : "Pick incorrect"}>
+          {statusDisplay.type === "live" ? (
+            <span className="matchup-status-live-group">
+              <span className="matchup-status-live-dot" />
+              <span className="matchup-status-pill matchup-status-pill-inline matchup-status-pill-live">{statusDisplay.liveLabel}</span>
+            </span>
+          ) : null}
+          <span className={`matchup-status-detail matchup-status-detail-${statusDisplay.type}`}>{statusDisplay.text}</span>
+          {pickOutcome !== "pending" && pickOutcome !== "placeholder" ? (
+            <span
+              className={`matchup-outcome-icon matchup-outcome-icon-${pickOutcome}`}
+              title={
+                pickOutcome === "correct"
+                  ? "Pick correct"
+                  : pickOutcome === "incorrect"
+                    ? "Pick incorrect"
+                    : "Pick busted"
+              }
+            >
               <OutcomeIcon outcome={pickOutcome} />
             </span>
           ) : null}
@@ -158,6 +158,7 @@ function sameGameInfo(left = null, right = null) {
     left.status === right.status &&
     left.statusLabel === right.statusLabel &&
     left.detail === right.detail &&
+    left.pickOutcome === right.pickOutcome &&
     left.gameId === right.gameId &&
     left.espnUrl === right.espnUrl &&
     left.commenceTime === right.commenceTime &&

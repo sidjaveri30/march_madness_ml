@@ -1,4 +1,22 @@
 export default function PlayerManagementSection({ onAddPlayer, onRemovePlayer, onRenamePlayer, pool }) {
+  function insertTextAtSelection(input, currentValue, nextText) {
+    const selectionStart = input.selectionStart ?? currentValue.length;
+    const selectionEnd = input.selectionEnd ?? selectionStart;
+    return `${currentValue.slice(0, selectionStart)}${nextText}${currentValue.slice(selectionEnd)}`;
+  }
+
+  function handleNameInputBeforeInput(event, playerId, currentName) {
+    if (event.data !== " ") return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    onRenamePlayer(playerId, insertTextAtSelection(event.currentTarget, currentName, " "));
+  }
+
+  function handleNameInputKeyDown(event) {
+    event.stopPropagation();
+  }
+
   return (
     <section className="survivor-section">
       <div className="survivor-section-header">
@@ -19,13 +37,17 @@ export default function PlayerManagementSection({ onAddPlayer, onRemovePlayer, o
             <div className="survivor-player-stack">
               {pool.players
                 .filter((player) => !player.eliminated)
-                .map((player) => (
+                .map((player, index) => (
                   <div className="survivor-player-editor" key={player.id}>
                     <div className="survivor-player-editor-main">
                       <input
-                        aria-label={`${player.name} name`}
+                        aria-label={`Player ${index + 1} name`}
+                        autoComplete="off"
                         className="survivor-input"
+                        onBeforeInput={(event) => handleNameInputBeforeInput(event, player.id, player.name)}
                         onChange={(event) => onRenamePlayer(player.id, event.target.value)}
+                        onKeyDown={handleNameInputKeyDown}
+                        type="text"
                         value={player.name}
                       />
                     </div>
@@ -48,13 +70,17 @@ export default function PlayerManagementSection({ onAddPlayer, onRemovePlayer, o
             <div className="survivor-player-stack">
               {pool.players
                 .filter((player) => player.eliminated)
-                .map((player) => (
+                .map((player, index) => (
                   <div className="survivor-player-editor survivor-player-editor-eliminated" key={player.id}>
                     <div className="survivor-player-editor-main">
                       <input
-                        aria-label={`${player.name} name`}
+                        aria-label={`Eliminated player ${index + 1} name`}
+                        autoComplete="off"
                         className="survivor-input"
+                        onBeforeInput={(event) => handleNameInputBeforeInput(event, player.id, player.name)}
                         onChange={(event) => onRenamePlayer(player.id, event.target.value)}
+                        onKeyDown={handleNameInputKeyDown}
+                        type="text"
                         value={player.name}
                       />
                     </div>

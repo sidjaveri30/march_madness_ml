@@ -1,3 +1,37 @@
+import { buildOfficialBracketView } from "./liveBracketEngine";
+
+function createHistoricalGameKey(game) {
+  return game.matchupId || game.gameId || "";
+}
+
+function mergeHistoricalFinals(previousView, nextView, definition) {
+  const priorGames = previousView?.orderedGames || [];
+  const nextGames = nextView?.orderedGames || [];
+  if (!priorGames.length || !nextGames.length) return nextView;
+
+  const retainedFinals = priorGames.filter((game) => game.status === "final");
+  if (!retainedFinals.length) return nextView;
+
+  const nextKeys = new Set(nextGames.map(createHistoricalGameKey).filter(Boolean));
+  const mergedGames = [...nextGames];
+
+  retainedFinals.forEach((game) => {
+    const key = createHistoricalGameKey(game);
+    if (!key || nextKeys.has(key)) return;
+    mergedGames.push(game);
+  });
+
+  if (mergedGames.length === nextGames.length) return nextView;
+
+  return buildOfficialBracketView({
+    definition,
+    games: mergedGames,
+    id: nextView.id,
+    label: nextView.label,
+    meta: nextView.meta,
+  });
+}
+
 function createLiveStateStore({ definition, provider }) {
   let cursor = provider.getInitialCursor();
   let state = {
@@ -34,7 +68,8 @@ function createLiveStateStore({ definition, provider }) {
       setState({ error: "" });
     }
     try {
-      const view = await provider.getView({ cursor, definition });
+      const nextView = await provider.getView({ cursor, definition });
+      const view = mergeHistoricalFinals(state.view, nextView, definition);
       setState({ loading: false, error: "", view });
     } catch (error) {
       setState({ loading: false, error: error.message || "Could not load live bracket feed." });

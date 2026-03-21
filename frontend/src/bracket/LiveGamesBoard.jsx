@@ -11,8 +11,17 @@ function ScheduleGame({ game }) {
   const content = (
     <>
       <div className="ticker-status">
-        <span className="matchup-status-pill matchup-status-pill-inline">{displayGame.displayStatusLabel}</span>
-        {displayGame.displayStatusDetail ? <span className="schedule-game-detail">{displayGame.displayStatusDetail}</span> : null}
+        {displayGame.statusDisplay?.type === "live" ? (
+          <span className="matchup-status-live-group">
+            <span className="matchup-status-live-dot" />
+            <span className="matchup-status-pill matchup-status-pill-inline matchup-status-pill-live">{displayGame.statusDisplay.liveLabel}</span>
+          </span>
+        ) : null}
+        {displayGame.statusDisplay?.text ? (
+          <span className={`schedule-game-detail matchup-status-detail matchup-status-detail-${displayGame.statusDisplay.type}`}>
+            {displayGame.statusDisplay.text}
+          </span>
+        ) : null}
         {displayGame.espnUrl ? <span aria-hidden="true" className="matchup-external-indicator schedule-game-external-indicator">↗</span> : null}
       </div>
       {roundInfo ? <div className="schedule-game-round">{roundInfo}</div> : null}

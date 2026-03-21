@@ -66,12 +66,12 @@ describe("LiveBracketPage", () => {
     render(<LiveBracketPage />);
 
     expect(await screen.findByText("Live Now")).toBeInTheDocument();
-    expect(await screen.findByText(/2H 12:14/i)).toBeInTheDocument();
+    expect(await screen.findByText(/12:14 2H/i)).toBeInTheDocument();
     expect(within(screen.getByTestId("matchup-midwest_r1_1")).getByRole("button", { name: /Howard \/ UMBC/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Refresh Now" }));
 
-    expect(await screen.findAllByText("FINAL")).not.toHaveLength(0);
+    expect(await screen.findAllByText("Final")).not.toHaveLength(0);
     expect(within(screen.getByTestId("matchup-midwest_r1_1")).getByRole("button", { name: /Howard/i })).toBeInTheDocument();
     expect(within(screen.getByTestId("matchup-east_r2_1")).getByRole("button", { name: /Ohio St\./i })).toBeInTheDocument();
   });
