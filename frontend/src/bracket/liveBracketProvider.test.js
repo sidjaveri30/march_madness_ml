@@ -123,6 +123,30 @@ describe("liveBracketEngine", () => {
     expect(view.games.west_r1_4?.status).toBe("final");
     expect(view.bracketState.picks.west_r1_4).toBe("Arkansas");
   });
+
+  it("matches mascot-style ESPN names for Kansas and Cal Baptist", () => {
+    const view = buildOfficialBracketView({
+      definition: bracketDefinition,
+      games: [
+        {
+          gameId: "401999999",
+          teamA: "Kansas Jayhawks",
+          teamB: "Cal Baptist Lancers",
+          teamAKey: "kansas",
+          teamBKey: "cal baptist",
+          status: "final",
+          statusLabel: "FINAL",
+          winner: "Kansas Jayhawks",
+          winnerKey: "kansas",
+          scoreA: 84,
+          scoreB: 62,
+        },
+      ],
+    });
+
+    expect(view.games.east_r1_4?.status).toBe("final");
+    expect(view.bracketState.picks.east_r1_4).toBe("Kansas");
+  });
 });
 
 describe("espn live provider", () => {

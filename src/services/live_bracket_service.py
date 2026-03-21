@@ -84,6 +84,7 @@ TOURNAMENT_FIELD_TEAMS = {
     "SMU",
 }
 TOURNAMENT_FIELD_KEYS = {normalizer.resolve(team_name) for team_name in TOURNAMENT_FIELD_TEAMS}
+TOURNAMENT_FIELD_DISPLAY_BY_KEY = {normalizer.resolve(team_name): team_name for team_name in TOURNAMENT_FIELD_TEAMS}
 
 
 def _iso_now() -> str:
@@ -100,11 +101,51 @@ def _safe_int(value: object) -> int | None:
 
 
 def _canonical_team_display(value: str) -> str:
-    return normalizer.display_name(value)
+    resolved = normalizer.resolve(value)
+    return TOURNAMENT_FIELD_DISPLAY_BY_KEY.get(resolved, normalizer.display_name(value))
 
 
 def _is_tournament_team(value: str) -> bool:
     return bool(value) and normalizer.resolve(value) in TOURNAMENT_FIELD_KEYS
+
+
+def _candidate_team_names(team_block: dict[str, Any]) -> list[str]:
+    if not isinstance(team_block, dict):
+        return []
+
+    raw_values = [
+        team_block.get("shortDisplayName"),
+        team_block.get("displayName"),
+        team_block.get("location"),
+        team_block.get("name"),
+        team_block.get("abbreviation"),
+    ]
+
+    location = str(team_block.get("location") or "").strip()
+    nickname = str(team_block.get("name") or "").strip()
+    if location and nickname:
+        raw_values.append(f"{location} {nickname}")
+
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for value in raw_values:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        candidates.append(text)
+    return candidates
+
+
+def _resolve_tournament_team(team_block: dict[str, Any]) -> tuple[str, str] | None:
+    for candidate in _candidate_team_names(team_block):
+        if _is_tournament_team(candidate):
+            canonical_key = normalizer.resolve(candidate)
+            return _canonical_team_display(candidate), canonical_key
+    return None
 
 
 def _period_label(period: int | None) -> str:
@@ -385,12 +426,12 @@ class EspnLiveGameProvider:
             key=lambda item: 0 if str(item.get("homeAway", "")).lower() == "home" else 1,
         )
         team_a, team_b = ordered[0], ordered[1]
-        team_a_name = str((team_a.get("team") or {}).get("shortDisplayName") or (team_a.get("team") or {}).get("displayName") or "").strip()
-        team_b_name = str((team_b.get("team") or {}).get("shortDisplayName") or (team_b.get("team") or {}).get("displayName") or "").strip()
-        if not team_a_name or not team_b_name:
+        team_a_resolved = _resolve_tournament_team(team_a.get("team") or {})
+        team_b_resolved = _resolve_tournament_team(team_b.get("team") or {})
+        if not team_a_resolved or not team_b_resolved:
             return None
-        if not (_is_tournament_team(team_a_name) and _is_tournament_team(team_b_name)):
-            return None
+        team_a_name, team_a_key = team_a_resolved
+        team_b_name, team_b_key = team_b_resolved
 
         status, status_label, detail, period = _status_from_competition(competition.get("status", {}))
         score_a = _safe_int(team_a.get("score"))
@@ -400,17 +441,16 @@ class EspnLiveGameProvider:
         if status == "final":
             winner_competitor = next((competitor for competitor in ordered if competitor.get("winner")), None)
             if winner_competitor:
-                winner_name = _canonical_team_display(
-                    str((winner_competitor.get("team") or {}).get("shortDisplayName") or (winner_competitor.get("team") or {}).get("displayName") or "")
-                )
-                winner_key = normalizer.resolve(winner_name)
+                winner_resolved = _resolve_tournament_team(winner_competitor.get("team") or {})
+                if winner_resolved:
+                    winner_name, winner_key = winner_resolved
 
         return LiveGame(
             gameId=str(event.get("id") or competition.get("id") or f"{team_a_name}-{team_b_name}"),
             teamA=_canonical_team_display(team_a_name),
             teamB=_canonical_team_display(team_b_name),
-            teamAKey=normalizer.resolve(team_a_name),
-            teamBKey=normalizer.resolve(team_b_name),
+            teamAKey=team_a_key,
+            teamBKey=team_b_key,
             scoreA=score_a,
             scoreB=score_b,
             status=status,

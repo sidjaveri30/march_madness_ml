@@ -6,21 +6,10 @@ import { bracketDefinition, getAllMatchups } from "../bracket/bracketDefinition"
 import { applyWinnerPick, createBracketState, getMatchupTeams } from "../bracket/bracketState";
 import SurvivorPoolPage from "./SurvivorPoolPage";
 
-function buildLiveFeedOverride({ live = false, resolvedFirstRound = false, started = false } = {}) {
+function buildLiveFeedOverride({ live = false, resolvedFirstRound = false, started = false, finalFirstRound = false } = {}) {
   let state = createBracketState(bracketDefinition);
   const firstRoundMatchups = getAllMatchups(bracketDefinition).filter((matchup) => matchup.round === "firstRound");
-  const games = Object.fromEntries(
-    firstRoundMatchups.map((matchup, index) => [
-      matchup.id,
-      {
-        matchupId: matchup.id,
-        status: live ? "live" : "upcoming",
-        startTime: started ? `2000-03-${20 + (index % 4)}T1${index % 10}:00:00Z` : `2099-03-${20 + (index % 4)}T1${index % 10}:00:00Z`,
-        scoreA: 70,
-        scoreB: 66,
-      },
-    ]),
-  );
+  const games = {};
 
   if (resolvedFirstRound) {
     state = firstRoundMatchups.reduce((currentState, matchup) => {
@@ -28,6 +17,18 @@ function buildLiveFeedOverride({ live = false, resolvedFirstRound = false, start
       return applyWinnerPick(bracketDefinition, currentState, matchup.id, winner);
     }, state);
   }
+
+  firstRoundMatchups.forEach((matchup, index) => {
+    const winner = resolvedFirstRound ? state.picks[matchup.id] : null;
+    games[matchup.id] = {
+      matchupId: matchup.id,
+      status: finalFirstRound ? "final" : live ? "live" : "upcoming",
+      startTime: started ? `2000-03-${20 + (index % 4)}T1${index % 10}:00:00Z` : `2099-03-${20 + (index % 4)}T1${index % 10}:00:00Z`,
+      scoreA: 70,
+      scoreB: 66,
+      winner,
+    };
+  });
 
   return {
     error: "",
@@ -233,6 +234,38 @@ describe("SurvivorPoolPage", () => {
     expect(screen.getByRole("tab", { name: /Friends Pool/i })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("advances to the next round when official results are processed manually", async () => {
+    const user = userEvent.setup();
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ resolvedFirstRound: true, finalFirstRound: true })} />);
+
+    await addAndSelectFirstPlayer(user);
+
+    const teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[0]);
+    await user.click(teamButtons[1]);
+    await user.click(teamButtons[2]);
+    await user.click(screen.getByRole("button", { name: "Save Round Picks" }));
+
+    const processButton = screen.getByRole("button", { name: "Process Official Results" });
+    expect(processButton).not.toBeDisabled();
+
+    await user.click(processButton);
+
+    expect(screen.getByText("Round of 32 is now open.")).toBeInTheDocument();
+    expect(screen.getAllByText("Round of 32").length).toBeGreaterThan(0);
+  });
+
+  it("lets admins open Round of 32 manually when automatic processing is stuck", async () => {
+    const user = userEvent.setup();
+    render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await user.click(screen.getByRole("button", { name: "Open Round of 32" }));
+
+    expect(screen.getByText("Round of 32 is now open for manual picks.")).toBeInTheDocument();
+    expect(screen.getAllByText("Round of 32").length).toBeGreaterThan(0);
+    expect(screen.getByText("0 / 2 selected")).toBeInTheDocument();
+  });
+
   it("resets and deletes only the active survivor pool", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "prompt").mockReturnValueOnce("Friends Pool").mockReturnValueOnce("Office Pool");
@@ -255,5 +288,22 @@ describe("SurvivorPoolPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete Pool" }));
     expect(screen.queryByRole("tab", { name: /Office Pool/i })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Friends Pool/i })).toBeInTheDocument();
+  });
+
+  it("automatically advances to the next round when the current round is fully final", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride()} />);
+
+    await addAndSelectFirstPlayer(user);
+    const teamButtons = getEnabledTeamButtons();
+    await user.click(teamButtons[0]);
+    await user.click(teamButtons[1]);
+    await user.click(teamButtons[2]);
+    await user.click(screen.getByRole("button", { name: "Save Round Picks" }));
+
+    rerender(<SurvivorPoolPage liveFeedOverride={buildLiveFeedOverride({ resolvedFirstRound: true, finalFirstRound: true })} />);
+
+    expect(await screen.findByText("Round of 32 is now open.")).toBeInTheDocument();
+    expect(screen.getByText("Round of 32")).toBeInTheDocument();
   });
 });

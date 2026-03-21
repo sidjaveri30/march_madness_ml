@@ -90,7 +90,7 @@ export default function ResultsProcessorSection({
           <div className="eyebrow">Survivor Status</div>
           <h3>Official round results</h3>
           <p className="subtle">
-            Active picks update live as games change. When the round is official, process the results once to eliminate players, stamp used teams, and advance the pool.
+            Active picks update live as games change. When every game in a round is final, the pool advances automatically. This button remains available as a manual fallback.
           </p>
         </div>
         <button className="primary-button" disabled={!roundContext?.roundComplete} onClick={onProcessResults} type="button">

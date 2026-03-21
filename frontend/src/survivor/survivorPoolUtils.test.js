@@ -16,6 +16,7 @@ import {
   setActiveSurvivorPool,
 } from "./survivorPoolStorage.js";
 import {
+  autoAdvancePool,
   buildRoundContext,
   clearPlayerRoundPicks,
   createPlayer,
@@ -332,6 +333,30 @@ describe("survivorPoolUtils", () => {
     expect(roundOne.roundKey).toBe("firstRound");
     expect(roundTwo.roundKey).toBe("secondRound");
     expect(roundTwo.availableTeams).toHaveLength(32);
+  });
+
+  it("auto-advances only once when every game in the current round is final", () => {
+    const resolvedState = resolveRound(createBracketState(bracketDefinition), "firstRound");
+    const firstRoundFinalGames = buildLiveGames("firstRound", "final");
+    const firstRound = buildRoundContext(bracketDefinition, resolvedState, firstRoundFinalGames, "firstRound");
+    const winningTeamIds = firstRound.matchups.slice(0, 3).map((matchup) => matchup.winner);
+    const pool = createPool({
+      players: [
+        createPlayer({
+          id: "sid",
+          name: "Sid",
+          picks: [{ roundKey: "firstRound", teamIds: winningTeamIds, wasCorrect: null }],
+        }),
+      ],
+    });
+
+    const firstPass = autoAdvancePool(pool, bracketDefinition, resolvedState, firstRoundFinalGames);
+    const secondPass = autoAdvancePool(firstPass.pool, bracketDefinition, resolvedState, firstRoundFinalGames);
+
+    expect(firstPass.advancedRoundKeys).toEqual(["firstRound"]);
+    expect(firstPass.pool.processedRoundKeys).toEqual(["firstRound"]);
+    expect(secondPass.advancedRoundKeys).toEqual([]);
+    expect(secondPass.pool.processedRoundKeys).toEqual(["firstRound"]);
   });
 
   it("allows valid official-round picks and stores them by round key", () => {

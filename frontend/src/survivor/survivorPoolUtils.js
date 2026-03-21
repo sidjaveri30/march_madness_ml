@@ -151,7 +151,7 @@ function buildRoundContext(definition, officialBracketState, gamesByMatchupId = 
   const availableTeams = matchups.flatMap((matchup) => matchup.resolvedTeams);
   const unresolvedTeams = Array.from(new Map(matchups.flatMap((matchup) => matchup.unresolvedTeams).map((team) => [team.id, team])).values());
   const uniqueAvailableTeams = Array.from(new Map(availableTeams.map((team) => [team.id, team])).values());
-  const roundComplete = matchups.length > 0 && matchups.every((matchup) => Boolean(matchup.winner));
+  const roundComplete = matchups.length > 0 && matchups.every(isRoundMatchupFinal);
 
   return {
     ...roundConfig,
@@ -161,6 +161,14 @@ function buildRoundContext(definition, officialBracketState, gamesByMatchupId = 
     unresolvedTeams,
     roundComplete,
   };
+}
+
+function isRoundMatchupFinal(matchup) {
+  if (!matchup) return false;
+  if (matchup.gameInfo) {
+    return matchup.gameInfo.status === "final" && Boolean(matchup.winner);
+  }
+  return Boolean(matchup.winner);
 }
 
 function getCurrentRoundContext(definition, officialBracketState, gamesByMatchupId, processedRoundKeys = []) {
@@ -496,6 +504,28 @@ function processRoundResults(pool, roundContext, nextRoundContext = null, defini
   };
 }
 
+function autoAdvancePool(pool, definition, officialBracketState, gamesByMatchupId = {}) {
+  let nextPool = recomputePoolState(pool, definition, officialBracketState, gamesByMatchupId);
+  const advancedRoundKeys = [];
+
+  while (true) {
+    const currentRound = getCurrentRoundContext(definition, officialBracketState, gamesByMatchupId, nextPool.processedRoundKeys);
+    if (!currentRound?.roundComplete) break;
+
+    const nextRound = getNextRoundContext(definition, officialBracketState, gamesByMatchupId, nextPool.processedRoundKeys);
+    const result = processRoundResults(nextPool, currentRound, nextRound, definition, officialBracketState, gamesByMatchupId);
+    if (result.error || arePoolsEquivalent(nextPool, result.pool)) break;
+
+    advancedRoundKeys.push(currentRound.roundKey);
+    nextPool = result.pool;
+  }
+
+  return {
+    pool: nextPool,
+    advancedRoundKeys,
+  };
+}
+
 function rollbackPoolToRound(pool, roundKey, definition, officialBracketState, gamesByMatchupId = {}) {
   const rollbackIndex = SURVIVOR_ROUND_CONFIG.findIndex((round) => round.roundKey === roundKey);
   if (rollbackIndex < 0) return pool;
@@ -510,6 +540,22 @@ function rollbackPoolToRound(pool, roundKey, definition, officialBracketState, g
   };
 
   return recomputePoolState(nextPool, definition, officialBracketState, gamesByMatchupId);
+}
+
+function openPoolToRound(pool, roundKey, definition, officialBracketState, gamesByMatchupId = {}) {
+  const targetIndex = SURVIVOR_ROUND_CONFIG.findIndex((round) => round.roundKey === roundKey);
+  if (targetIndex < 0) return pool;
+
+  const nextProcessed = SURVIVOR_ROUND_CONFIG.slice(0, targetIndex).map((round) => round.roundKey);
+  return recomputePoolState(
+    {
+      ...pool,
+      processedRoundKeys: nextProcessed,
+    },
+    definition,
+    officialBracketState,
+    gamesByMatchupId,
+  );
 }
 
 function getPlayerUsedTeams(player, teamLookup) {
@@ -541,6 +587,7 @@ function getPlayerCurrentRoundStatuses(player, roundContext, teamLookup) {
 
 export {
   arePoolsEquivalent,
+  autoAdvancePool,
   SURVIVOR_ROUND_CONFIG,
   buildRoundContext,
   canPlayerMakeRoundPicks,
@@ -556,6 +603,7 @@ export {
   getLegalTeamOptionsForPlayer,
   getNextRoundContext,
   getRoundLockStatus,
+  openPoolToRound,
   getPickStatus,
   getPlayerCurrentRoundStatuses,
   getPlayerRoundHistory,

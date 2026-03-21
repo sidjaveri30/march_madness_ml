@@ -166,6 +166,12 @@ class LiveBracketServiceTests(unittest.TestCase):
         self.assertEqual(normalizer.resolve("NDSU"), normalizer.resolve("North Dakota St."))
         self.assertEqual(normalizer.resolve("Hawai'i"), normalizer.resolve("Hawaii"))
         self.assertEqual(normalizer.resolve("Texas A&M"), normalizer.resolve("texas aandm"))
+        self.assertEqual(normalizer.resolve("Kansas Jayhawks"), normalizer.resolve("Kansas"))
+        self.assertEqual(normalizer.resolve("Cal Baptist Lancers"), normalizer.resolve("Cal Baptist"))
+        self.assertEqual(normalizer.resolve("Prairie View A&M Panthers"), normalizer.resolve("Prairie View A&M"))
+        self.assertEqual(normalizer.resolve("Lehigh Mountain Hawks"), normalizer.resolve("Lehigh"))
+        self.assertEqual(normalizer.resolve("Queens University of Charlotte Royals"), normalizer.resolve("Queens (N.C.)"))
+        self.assertEqual(normalizer.resolve("Queens Royals"), normalizer.resolve("Queens (N.C.)"))
 
     def test_espn_provider_normalizes_live_and_final_games(self):
         session = _MockSession()
@@ -191,6 +197,102 @@ class LiveBracketServiceTests(unittest.TestCase):
         self.assertGreaterEqual(len(session.calls), 3)
         self.assertTrue(all("dates" in call for call in session.calls))
         self.assertTrue(all({game.teamA, game.teamB} != {"Dayton", "Boise St."} for game in games))
+
+    def test_espn_provider_accepts_location_and_nickname_team_fields(self):
+        provider = EspnLiveGameProvider(session=_MockSession())
+        event = {
+            "id": "777",
+            "date": "2026-03-21T21:00:00Z",
+            "competitions": [
+                {
+                    "id": "777",
+                    "date": "2026-03-21T21:00:00Z",
+                    "status": {
+                        "type": {"state": "post"},
+                        "displayClock": "0:00",
+                        "period": 2,
+                    },
+                    "competitors": [
+                        {
+                            "homeAway": "home",
+                            "score": "84",
+                            "winner": True,
+                            "team": {
+                                "displayName": "Kansas Jayhawks",
+                                "location": "Kansas",
+                                "name": "Jayhawks",
+                            },
+                        },
+                        {
+                            "homeAway": "away",
+                            "score": "62",
+                            "winner": False,
+                            "team": {
+                                "displayName": "California Baptist Lancers",
+                                "location": "Cal Baptist",
+                                "name": "Lancers",
+                            },
+                        },
+                    ],
+                }
+            ],
+        }
+
+        game = provider._normalize_event(event)
+
+        self.assertIsNotNone(game)
+        self.assertEqual(game.teamA, "Kansas")
+        self.assertEqual(game.teamB, "Cal Baptist")
+        self.assertEqual(game.winner, "Kansas")
+        self.assertEqual(game.status, "final")
+
+    def test_espn_provider_accepts_queens_charlotte_variants(self):
+        provider = EspnLiveGameProvider(session=_MockSession())
+        event = {
+            "id": "778",
+            "date": "2026-03-21T21:00:00Z",
+            "competitions": [
+                {
+                    "id": "778",
+                    "date": "2026-03-21T21:00:00Z",
+                    "status": {
+                        "type": {"state": "post"},
+                        "displayClock": "0:00",
+                        "period": 2,
+                    },
+                    "competitors": [
+                        {
+                            "homeAway": "home",
+                            "score": "91",
+                            "winner": True,
+                            "team": {
+                                "displayName": "Purdue Boilermakers",
+                                "location": "Purdue",
+                                "name": "Boilermakers",
+                            },
+                        },
+                        {
+                            "homeAway": "away",
+                            "score": "58",
+                            "winner": False,
+                            "team": {
+                                "displayName": "Queens University of Charlotte Royals",
+                                "location": "Queens University of Charlotte",
+                                "name": "Royals",
+                            },
+                        },
+                    ],
+                }
+            ],
+        }
+
+        game = provider._normalize_event(event)
+
+        self.assertIsNotNone(game)
+        self.assertEqual(game.teamA, "Purdue")
+        self.assertEqual(game.teamB, "Queens (N.C.)")
+        self.assertEqual(game.winner, "Purdue")
+        self.assertEqual(game.status, "final")
 
 
 if __name__ == "__main__":

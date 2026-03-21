@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { bracketDefinition } from "../bracket/bracketDefinition";
 import { createBracketState } from "../bracket/bracketState";
@@ -25,6 +26,7 @@ import {
 import {
   SURVIVOR_ROUND_CONFIG,
   arePoolsEquivalent,
+  autoAdvancePool,
   buildRoundContext,
   clearPlayerRoundPicks,
   createPlayer,
@@ -34,6 +36,7 @@ import {
   getCurrentRoundContext,
   getEliminatedPlayers,
   getNextRoundContext,
+  openPoolToRound,
   getPlayerRoundPick,
   getRoundLockStatus,
   processRoundResults,
@@ -95,15 +98,38 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   }, 300, [workspace]);
 
   useEffect(() => {
-    setWorkspace((current) =>
-      updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, (entry) => {
-        const nextPool = recomputePoolState(entry.pool, bracketDefinition, officialBracketState, gamesByMatchupId);
-        if (arePoolsEquivalent(entry.pool, nextPool)) {
-          return {};
+    let nextAutoMessage = "";
+
+    setWorkspace((current) => {
+      let nextWorkspace = current;
+
+      current.survivorPoolOrder.forEach((entryId) => {
+        const entry = nextWorkspace.survivorPoolsById[entryId];
+        if (!entry) return;
+
+        const { pool: syncedPool, advancedRoundKeys } = autoAdvancePool(entry.pool, bracketDefinition, officialBracketState, gamesByMatchupId);
+        if (arePoolsEquivalent(entry.pool, syncedPool)) {
+          return;
         }
-        return { pool: nextPool };
-      }),
-    );
+
+        nextWorkspace = updateSurvivorPoolEntry(nextWorkspace, entryId, () => ({ pool: syncedPool }));
+
+        if (entryId === current.activeSurvivorPoolId && advancedRoundKeys.length) {
+          const reopenedRound = getCurrentRoundContext(bracketDefinition, officialBracketState, gamesByMatchupId, syncedPool.processedRoundKeys);
+          nextAutoMessage = reopenedRound?.tournamentLabel
+            ? `${reopenedRound.tournamentLabel} is now open.`
+            : "Survivor pool results advanced automatically.";
+        }
+      });
+
+      return nextWorkspace;
+    });
+
+    if (nextAutoMessage) {
+      setResultsError("");
+      setPickError("");
+      setResultsMessage(nextAutoMessage);
+    }
   }, [officialBracketState, gamesByMatchupId]);
 
   const currentRound = useMemo(
@@ -324,27 +350,100 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
   }
 
   function handleProcessResults() {
-    if (!currentRound) {
-      setResultsError("No official round is available to process.");
-      return;
-    }
-    const result = processRoundResults(
-      pool,
-      currentRound,
-      nextRound,
-      bracketDefinition,
-      officialBracketState,
-      gamesByMatchupId,
-    );
-    if (result.error) {
-      setResultsError(result.error);
+    let nextResultsError = "";
+    let nextResultsMessage = "";
+    let didUpdate = false;
+
+    flushSync(() => {
+      setWorkspace((current) => {
+        const entry = current.survivorPoolsById[current.activeSurvivorPoolId];
+        if (!entry) {
+          nextResultsError = "No official round is available to process.";
+          return current;
+        }
+
+        const entryCurrentRound = getCurrentRoundContext(
+          bracketDefinition,
+          officialBracketState,
+          gamesByMatchupId,
+          entry.pool.processedRoundKeys,
+        );
+        if (!entryCurrentRound) {
+          nextResultsError = "No official round is available to process.";
+          return current;
+        }
+
+        const { pool: advancedPool, advancedRoundKeys } = autoAdvancePool(
+          entry.pool,
+          bracketDefinition,
+          officialBracketState,
+          gamesByMatchupId,
+        );
+
+        if (advancedRoundKeys.length) {
+          didUpdate = true;
+          const reopenedRound = getCurrentRoundContext(
+            bracketDefinition,
+            officialBracketState,
+            gamesByMatchupId,
+            advancedPool.processedRoundKeys,
+          );
+          nextResultsMessage = reopenedRound?.tournamentLabel
+            ? `${reopenedRound.tournamentLabel} is now open.`
+            : entryCurrentRound.roundKey === "championship"
+              ? "Championship results processed."
+              : `${entryCurrentRound.tournamentLabel} results processed.`;
+          return updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, () => ({ pool: advancedPool }));
+        }
+
+        const entryNextRound = getNextRoundContext(
+          bracketDefinition,
+          officialBracketState,
+          gamesByMatchupId,
+          entry.pool.processedRoundKeys,
+        );
+        const result = processRoundResults(
+          entry.pool,
+          entryCurrentRound,
+          entryNextRound,
+          bracketDefinition,
+          officialBracketState,
+          gamesByMatchupId,
+        );
+        if (result.error) {
+          nextResultsError = result.error;
+          return current;
+        }
+
+        if (arePoolsEquivalent(entry.pool, result.pool)) {
+          nextResultsError = "No survivor updates were needed for this round.";
+          return current;
+        }
+
+        didUpdate = true;
+        const reopenedRound = getCurrentRoundContext(
+          bracketDefinition,
+          officialBracketState,
+          gamesByMatchupId,
+          result.pool.processedRoundKeys,
+        );
+        nextResultsMessage = reopenedRound?.tournamentLabel
+          ? `${reopenedRound.tournamentLabel} is now open.`
+          : entryCurrentRound.roundKey === "championship"
+            ? "Championship results processed."
+            : `${entryCurrentRound.tournamentLabel} results processed.`;
+        return updateSurvivorPoolEntry(current, current.activeSurvivorPoolId, () => ({ pool: result.pool }));
+      });
+    });
+
+    if (didUpdate) {
+      setResultsError("");
+      setPickError("");
+      setResultsMessage(nextResultsMessage);
       return;
     }
 
-    updatePool(result.pool);
-    setResultsError("");
-    setPickError("");
-    setResultsMessage(currentRound.roundKey === "championship" ? "Championship results processed." : `${currentRound.tournamentLabel} results processed.`);
+    setResultsError(nextResultsError || "No survivor updates were needed for this round.");
   }
 
   function handleClearCurrentPicks() {
@@ -376,6 +475,16 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
     setResultsError("");
     const label = SURVIVOR_ROUND_CONFIG.find((round) => round.roundKey === rollbackRoundKey)?.tournamentLabel || rollbackRoundKey;
     setResultsMessage(`Pool rolled back to ${label}.`);
+  }
+
+  function handleOpenRound(roundKey) {
+    updateActivePoolEntry((entry) => ({
+      pool: openPoolToRound(entry.pool, roundKey, bracketDefinition, officialBracketState, gamesByMatchupId),
+    }));
+    const label = SURVIVOR_ROUND_CONFIG.find((round) => round.roundKey === roundKey)?.tournamentLabel || roundKey;
+    setPickError("");
+    setResultsError("");
+    setResultsMessage(`${label} is now open for manual picks.`);
   }
 
   function handleResetPool() {
@@ -464,6 +573,7 @@ export default function SurvivorPoolPage({ liveFeedOverride = null }) {
         currentRound={currentRound}
         lockStatus={roundLock}
         onClearCurrentPicks={handleClearCurrentPicks}
+        onOpenRound={handleOpenRound}
         onToggleAdminMode={() => setAdminMode((current) => !current)}
         onResetPool={handleResetPool}
         onRollbackRound={handleRollbackRound}

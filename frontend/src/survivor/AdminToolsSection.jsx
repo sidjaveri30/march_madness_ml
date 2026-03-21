@@ -5,6 +5,7 @@ export default function AdminToolsSection({
   currentRound,
   lockStatus,
   onClearCurrentPicks,
+  onOpenRound,
   onToggleAdminMode,
   onResetPool,
   onRollbackRound,
@@ -74,6 +75,21 @@ export default function AdminToolsSection({
               <button className="secondary-button survivor-danger-button" onClick={onResetPool} type="button">
                 Reset Pool
               </button>
+            </div>
+          </div>
+        </article>
+
+        <article className="survivor-card">
+          <div className="eyebrow">Manual Round Open</div>
+          <div className="survivor-player-stack">
+            <div className="subtle">If automatic processing is stuck, use these buttons to open the next round manually and re-enter picks there.</div>
+            <div className="subtle">Round of 32 requires 2 picks. Sweet 16, Elite Eight, Final Four, and National Championship each require 1 pick.</div>
+            <div className="survivor-inline-actions">
+              {SURVIVOR_ROUND_CONFIG.filter((round) => round.roundKey !== "firstRound").map((round) => (
+                <button className="secondary-button" key={round.roundKey} onClick={() => onOpenRound(round.roundKey)} type="button">
+                  Open {round.tournamentLabel}
+                </button>
+              ))}
             </div>
           </div>
         </article>
